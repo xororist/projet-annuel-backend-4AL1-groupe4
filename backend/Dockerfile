@@ -4,11 +4,9 @@ ARG PYTHON_VERSION=3.10.12
 FROM python:${PYTHON_VERSION}-slim as base
 
 ENV PYTHONDONTWRITEBYTECODE=1
-
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
-
 
 ARG UID=10001
 RUN adduser \
@@ -30,4 +28,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000
