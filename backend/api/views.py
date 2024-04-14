@@ -20,6 +20,27 @@ class ProgramListCreate(generics.ListCreateAPIView):
             print(serializer.errors)
 
 
+class ProgramUpdate(generics.UpdateAPIView):
+    serializer_class = ProgramSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Program.objects.filter(author=user)
+
+    def perform_update(self, serializer):
+        if serializer.is_valid():
+            serializer.save()  
+        else:
+            print(serializer.errors)
+
+    def get_object(self):
+        pk = self.kwargs.get("pk")  
+        if pk is None:
+            return None
+        return self.get_queryset().filter(pk=pk).first()
+
+
 class ProgramDelete(generics.DestroyAPIView):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
