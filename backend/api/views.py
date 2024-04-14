@@ -5,7 +5,7 @@ from .serializers import UserSerializer, ProgramSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Program
 
-class ProgramListCreate(generics.ListAPIView):
+class ProgramListCreate(generics.ListCreateAPIView):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
 
