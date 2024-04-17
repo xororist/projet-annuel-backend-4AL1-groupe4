@@ -19,8 +19,8 @@ RUN adduser \
     appuser
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    python -m pip install -r requirements.txt
+    --mount=type=bind,source=requirements.dev.txt,target=requirements.dev.txt \
+    python -m pip install -r requirements.dev.txt
 
 COPY . .
 
