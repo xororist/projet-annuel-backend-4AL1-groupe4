@@ -21,7 +21,7 @@ function Navbar({ user, onSignOut }) {
             
             <NavLink to="/" className="text-white text-lg font-semibold">MonApp</NavLink>
     
-            <div class="flex flex-row">
+            <div className="flex flex-row">
                 <NavLink to="/home" className={({ isActive }) => (isActive ? activeLink : normalLink)}>Home</NavLink>
                 <NavLink to="/login" className={({ isActive }) => (isActive ? activeLink : normalLink)}>Login</NavLink>
                 <NavLink to="/register" className={({ isActive }) => (isActive ? activeLink : normalLink)}>Register</NavLink>
