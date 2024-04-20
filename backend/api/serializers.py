@@ -24,5 +24,8 @@ class UserSerializer(serializers.ModelSerializer):
 class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "title", "description", "created_at", "author"]
-        extra_kwargs = {"author": {"read_only": True}}
+        fields = ["id", "title", "description", "created_at", "author", "file"]
+        extra_kwargs = {
+            "author": {"read_only": True},
+            "file": {"required": False} 
+        }

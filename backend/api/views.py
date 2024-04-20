@@ -4,21 +4,20 @@ from rest_framework import generics
 from .serializers import UserSerializer, ProgramSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Program
+from rest_framework.parsers import MultiPartParser, FormParser
+
 
 class ProgramListCreate(generics.ListCreateAPIView):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)  # Add these parsers to handle file uploads
 
     def get_queryset(self):
         user = self.request.user
         return Program.objects.filter(author=user)
 
     def perform_create(self, serializer):
-        if serializer.is_valid():
-            serializer.save(author=self.request.user)
-        else:
-            print(serializer.errors)
-
+        serializer.save(author=self.request.user)
 
 class ProgramUpdate(generics.UpdateAPIView):
     serializer_class = ProgramSerializer
@@ -29,17 +28,13 @@ class ProgramUpdate(generics.UpdateAPIView):
         return Program.objects.filter(author=user)
 
     def perform_update(self, serializer):
-        if serializer.is_valid():
-            serializer.save()  
-        else:
-            print(serializer.errors)
+        serializer.save()
 
     def get_object(self):
-        pk = self.kwargs.get("pk")  
+        pk = self.kwargs.get("pk")
         if pk is None:
             return None
         return self.get_queryset().filter(pk=pk).first()
-
 
 class ProgramDelete(generics.DestroyAPIView):
     serializer_class = ProgramSerializer
