@@ -21,10 +21,11 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "title", "description", "created_at", "author", "file"]
+        fields = ["id", "title", "description", "created_at", "author", "file", "isVisible"]
         extra_kwargs = {
             "author": {"read_only": True},
             "file": {"required": False} 

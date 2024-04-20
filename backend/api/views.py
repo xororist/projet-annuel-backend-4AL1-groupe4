@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework import generics
 from .serializers import UserSerializer, ProgramSerializer
@@ -19,7 +18,7 @@ class ProgramList(generics.ListAPIView):
 class ProgramListCreate(generics.ListCreateAPIView):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)  # Add these parsers to handle file uploads
+    parser_classes = (MultiPartParser, FormParser)
 
     def get_queryset(self):
         user = self.request.user
