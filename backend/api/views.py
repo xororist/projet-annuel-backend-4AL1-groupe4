@@ -7,6 +7,15 @@ from .models import Program
 from rest_framework.parsers import MultiPartParser, FormParser
 
 
+class ProgramList(generics.ListAPIView):
+    serializer_class = ProgramSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Program.objects.all()
+
+
 class ProgramListCreate(generics.ListCreateAPIView):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
@@ -18,6 +27,7 @@ class ProgramListCreate(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
 
 class ProgramUpdate(generics.UpdateAPIView):
     serializer_class = ProgramSerializer
@@ -35,6 +45,7 @@ class ProgramUpdate(generics.UpdateAPIView):
         if pk is None:
             return None
         return self.get_queryset().filter(pk=pk).first()
+
 
 class ProgramDelete(generics.DestroyAPIView):
     serializer_class = ProgramSerializer
