@@ -28,6 +28,7 @@ function LoginPage() {
 		console.log(data)
 		try {
 			const res = await getToken(data)
+			console.log(res)
 			localStorage.setItem('token', res.data.access)
 			navigate('/home');
 			window.location.reload(); 
