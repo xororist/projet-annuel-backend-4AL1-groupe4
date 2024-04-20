@@ -29,7 +29,7 @@ function LoginPage() {
 		try {
 			const res = await getToken(data)
 			localStorage.setItem('token', res.data.access)
-			navigate('/');
+			navigate('/home');
 			window.location.reload(); 
 		} catch (error) { 
 			if (error.response) {
