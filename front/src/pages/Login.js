@@ -36,11 +36,14 @@ function LoginPage() {
 			const res = await getToken(data)
 			console.log(res)
 			localStorage.setItem('token', res.data.access)
+			alert(res.data.access)
+			alert(jwtDecode(res.data.access))
+			setUser(jwtDecode(res.data.access))
 			navigate('/home');
 			window.location.reload(); 
 		} catch (error) { 
 			if (error.response) {
-				if (error.response.status == 401) {
+				if (error.response.status === 401) {
 					notifyError("Incorrect username or password");
 				} else if(error.message) {
 					notifyError(error.message);
@@ -58,7 +61,7 @@ function LoginPage() {
 		try {
 			const decoded = jwtDecode(credentialResponse.credential);
 			console.log(decoded);
-			setUser(decoded); // Mise à jour de l'état global de l'utilisateur
+			setUser(decoded);
 		} catch (error) {
 			console.error('Failed to decode or set user', error);
 		}

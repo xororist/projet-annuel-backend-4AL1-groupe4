@@ -69,7 +69,7 @@ function Navbar({ user, onSignOut }) {
             <div className="flex flex-row">
               <a href="/home" className={normalLink} onClick={(e) => handleHomeClick(e)}>Home</a>
               <a href="/login" className={normalLink}>Login</a>
-              <a href="/register" className={normalLink}>Register</a>
+              <a href="/editor" className={normalLink}>Editor</a>
             </div>
             <div className="relative ml-auto mr-4" ref={profileDropdownRef}>
               <button onClick={toggleProfileDropdown} className="focus:outline-none">

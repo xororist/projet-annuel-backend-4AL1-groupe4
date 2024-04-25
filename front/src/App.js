@@ -7,6 +7,9 @@ import Register from './pages/Register';
 import NotFound from "./pages/notFound";
 import ForgotPassword from './pages/ForgotPassword';
 import Profile from "./pages/profile";
+import MyEditor from "./pages/MyEditor";
+import PrivateRoute from './components/PrivateRoute';
+import { UserProvider } from './contexts/UserContext'; /**To wrap all the component which required user connected information. help to export user for others component*/
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,7 +24,6 @@ function App() {
   const handleSignOut = () => {
     setUser(null);
     localStorage.removeItem('token');
-    return <Navigate to="/login" />;
   };
 
   const handleLogin = (userInfo) => {
@@ -29,19 +31,25 @@ function App() {
   };
 
   return (
-    <Router>
-      <Navbar user={user} onSignOut={handleSignOut} />
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login onLogin={handleLogin} />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/not-found" element={<NotFound />} /> 
+      <UserProvider>
+        <Router>
+          <Navbar user={user} onSignOut={handleSignOut} />
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-      </Routes>
-    </Router>
+            <Route element={<PrivateRoute user={user} />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/editor" element={<MyEditor />} />
+            </Route>
+
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </UserProvider>
   );
 }
 
