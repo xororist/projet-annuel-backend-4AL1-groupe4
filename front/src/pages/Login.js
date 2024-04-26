@@ -16,9 +16,10 @@ import loginicon from '../logo.svg'
 
 import logo from '../assets/loginicon.jpg'
 import loginimagebg from "../assets/photos/Tiny_people_carrying_key_to_open_padlock-removebg-preview.png";
+import {getUserInformation} from "../services/api.user";
 
 function LoginPage() {
-	const { user,  setUser } = useContext(UserContext);
+	let { user,  setUser } = useContext(UserContext);
     const {register, handleSubmit, setValue, formState: {
 		errors
     } } = useForm();
@@ -34,14 +35,17 @@ function LoginPage() {
 		console.log(data)
 		try {
 			const res = await getToken(data)
-			console.log(res)
 			localStorage.setItem('token', res.data.access)
-			alert(res.data.access)
-			alert(jwtDecode(res.data.access))
-			setUser(jwtDecode(res.data.access))
-			navigate('/home');
-			window.location.reload(); 
-		} catch (error) { 
+			const decoded = jwtDecode(res.data.access)
+			const result = await  getUserInformation(decoded.user_id)
+			alert(result)
+			user = result.data
+			setUser(user)
+			console.log(user)
+			alert(user)
+			navigate('/profile')
+
+		} catch (error) {
 			if (error.response) {
 				if (error.response.status === 401) {
 					notifyError("Incorrect username or password");

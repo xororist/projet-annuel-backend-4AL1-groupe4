@@ -22,7 +22,9 @@ function App() {
   }, []);
 
   const handleSignOut = () => {
-    setUser(null);
+    alert(user)
+    // setUser(null);
+    alert(localStorage.getItem('token'));
     localStorage.removeItem('token');
   };
 
@@ -38,11 +40,12 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/editor" element={<MyEditor />} />
+
 
             <Route element={<PrivateRoute user={user} />}>
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/editor" element={<MyEditor />} />
             </Route>
 
             <Route path="/forgot-password" element={<ForgotPassword />} />

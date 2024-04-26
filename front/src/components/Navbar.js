@@ -41,10 +41,11 @@ function Navbar({ user, onSignOut }) {
   };
 
   const handleHomeClick = (e) => {
-    if (!user) {
-      e.preventDefault();
-      navigate("/not-found");
-    }
+    alert(e)
+    // if (!user) {
+    //   e.preventDefault();
+    //   navigate("/not-found");
+    // }
   };
 
   const toggleDarkMode = () => {

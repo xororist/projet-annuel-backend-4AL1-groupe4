@@ -10,3 +10,5 @@ baseUrl.interceptors.request.use((config) => {
 
 // User registration and forgot password
 export const currentUser = (data) => baseUrl.get("/user/me/");
+export const getUserInformation = (idUser) => baseUrl.get(`/user/informations/${idUser}/`);
+
