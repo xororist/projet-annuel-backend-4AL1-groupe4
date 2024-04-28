@@ -10,6 +10,7 @@ import Profile from "./pages/profile";
 import MyEditor from "./pages/MyEditor";
 import PrivateRoute from './components/PrivateRoute';
 import { UserProvider } from './contexts/UserContext'; /**To wrap all the component which required user connected information. help to export user for others component*/
+import AuthProvider from './contexts/AuthContext';
 
 function App() {
   const [user, setUser] = useState(null);
