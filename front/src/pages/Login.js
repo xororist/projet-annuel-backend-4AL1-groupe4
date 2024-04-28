@@ -17,6 +17,7 @@ import loginicon from '../logo.svg'
 import logo from '../assets/loginicon.jpg'
 import loginimagebg from "../assets/photos/Tiny_people_carrying_key_to_open_padlock-removebg-preview.png";
 import {getUserInformation} from "../services/api.user";
+import { useAuth } from '../contexts/AuthContext';
 
 function LoginPage() {
 	let { user,  setUser } = useContext(UserContext);
@@ -31,34 +32,12 @@ function LoginPage() {
     //   console.log("Logging in...");
     // };
 
+	const auth = useAuth();
+
     const onSubmit = handleSubmit(async (data) => {
 		console.log(data)
-		try {
-			const res = await getToken(data)
-			localStorage.setItem('token', res.data.access)
-			const decoded = jwtDecode(res.data.access)
-			const result = await  getUserInformation(decoded.user_id)
-			alert(result)
-			user = result.data
-			setUser(user)
-			console.log(user)
-			alert(user)
-			navigate('/profile')
-
-		} catch (error) {
-			if (error.response) {
-				if (error.response.status === 401) {
-					notifyError("Incorrect username or password");
-				} else if(error.message) {
-					notifyError(error.message);
-				}
-			} else if (error.request) {
-				console.log(error.request);
-			} else {
-				notifyError(error.message);
-			}
-		}
-
+		auth.loginAction(data);
+		return;
     });
 
     const handleOAuthLogin = (credentialResponse) => {
