@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSignOutAlt, FaGlobe, FaMoon } from "react-icons/fa";
 import loginicon from '../logo.svg';
-import { useAuth } from "../contexts/AuthContext";
-import isAuthenticated from "../functions/TokenManager";
+import { useAuth } from '../contexts/AuthContext';
+import  isAuthenticated from '../functions/TokenManager';
 
-function Navbar({ user, onSignOut }) {
+
+function Navbar() {
   const activeLink = "text-white px-3 py-2 rounded-md text-sm font-medium";
   const normalLink = "text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium";
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -19,7 +20,7 @@ function Navbar({ user, onSignOut }) {
   const navigate = useNavigate();
 
   const auth = useAuth();
-  const user = auth.user;
+  const user = auth.user
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -35,6 +36,7 @@ function Navbar({ user, onSignOut }) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+
 
     if (isAuthenticated() && auth.token) {
 			setAuthenticated(true);

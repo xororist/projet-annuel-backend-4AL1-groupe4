@@ -12,30 +12,32 @@ import PrivateRoute from './components/PrivateRoute';
 import { UserProvider } from './contexts/UserContext'; /**To wrap all the component which required user connected information. help to export user for others component*/
 import AuthProvider from './contexts/AuthContext';
 
+
 function App() {
   const [user, setUser] = useState(null);
 
+  
+
   const handleSignOut = () => {
-    alert(user)
     // setUser(null);
     alert(localStorage.getItem('token'));
     localStorage.removeItem('token');
   };
 
 
+
   return (
-      <UserProvider>
-        <Router>
-          <Navbar user={user} onSignOut={handleSignOut} />
+    <Router>
+        <AuthProvider>
+          <Navbar />
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/home" element={<Home />} /> 
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/editor" element={<MyEditor />} />
 
 
-            <Route element={<PrivateRoute user={user} />}>
+            <Route element={<PrivateRoute />}>
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
@@ -43,8 +45,8 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Router>
-      </UserProvider>
+        </AuthProvider>
+      </Router>
   );
 }
 
