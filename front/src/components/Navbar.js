@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSignOutAlt, FaGlobe, FaMoon } from "react-icons/fa";
 import loginicon from '../logo.svg';
+import { useAuth } from "../contexts/AuthContext";
+import isAuthenticated from "../functions/TokenManager";
 
 function Navbar({ user, onSignOut }) {
   const activeLink = "text-white px-3 py-2 rounded-md text-sm font-medium";
@@ -10,10 +12,14 @@ function Navbar({ user, onSignOut }) {
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false); // État du mode sombre
   const [language, setLanguage] = useState("fr"); // Langue sélectionnée
+  const [authenticated, setAuthenticated] = useState(false);
 
   const profileDropdownRef = useRef(null);
   const languageDropdownRef = useRef(null);
   const navigate = useNavigate();
+
+  const auth = useAuth();
+  const user = auth.user;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -29,13 +35,19 @@ function Navbar({ user, onSignOut }) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+
+    if (isAuthenticated() && auth.token) {
+			setAuthenticated(true);
+		} else {
+			setAuthenticated(false);
+		}
+  }, [auth.token]);
 
   const toggleProfileDropdown = () => setProfileDropdownOpen(!profileDropdownOpen);
   const toggleLanguageDropdown = () => setLanguageDropdownOpen(!languageDropdownOpen);
 
   const handleSignOut = () => {
-    onSignOut();
+    auth.onSignOut();
     setProfileDropdownOpen(false);
     navigate("/login");
   };
