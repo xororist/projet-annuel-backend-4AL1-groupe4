@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -9,43 +9,22 @@ import ForgotPassword from './pages/ForgotPassword';
 import Profile from "./pages/profile";
 import MyEditor from "./pages/MyEditor";
 import PrivateRoute from './components/PrivateRoute';
-import { UserProvider } from './contexts/UserContext'; /**To wrap all the component which required user connected information. help to export user for others component*/
+import { UserProvider } from './contexts/UserContext';
 
 function App() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setUser({ token });
-    }
-  }, []);
-
-  const handleSignOut = () => {
-    alert(user)
-    // setUser(null);
-    alert(localStorage.getItem('token'));
-    localStorage.removeItem('token');
-  };
-
-  const handleLogin = (userInfo) => {
-    setUser(userInfo);
-  };
-
   return (
       <UserProvider>
         <Router>
-          <Navbar user={user} onSignOut={handleSignOut} />
+          <Navbar />
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/editor" element={<MyEditor />} />
 
-
-            <Route element={<PrivateRoute user={user} />}>
+            <Route element={<PrivateRoute />}>
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/editor" element={<MyEditor />} />
             </Route>
 
             <Route path="/forgot-password" element={<ForgotPassword />} />

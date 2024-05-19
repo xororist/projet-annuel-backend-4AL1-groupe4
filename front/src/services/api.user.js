@@ -8,7 +8,8 @@ baseUrl.interceptors.request.use((config) => {
     return config;
 });
 
-// User registration and forgot password
+
 export const currentUser = (data) => baseUrl.get("/user/me/");
 export const getUserInformation = (idUser) => baseUrl.get(`/user/informations/${idUser}/`);
+export const updateUserInformation = (idUser, user) => baseUrl.put(`/user/update/${idUser}/`, user);
 

@@ -4,7 +4,9 @@ import { UserContext } from '../contexts/UserContext';
 
 const PrivateRoute = () => {
     const { user } = useContext(UserContext);
-    return  user ? <Outlet /> : <Navigate to="/not-found" replace />;
+    const token = localStorage.getItem('token');
+
+    return user || token ? <Outlet /> : <Navigate to="/not-found" replace />;
 };
 
 export default PrivateRoute;
