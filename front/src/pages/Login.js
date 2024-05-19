@@ -1,51 +1,38 @@
 import React from "react";
-import {FaGithub, FaGoogle, FaSignOutAlt} from "react-icons/fa";
+import { FaGithub, FaGoogle } from "react-icons/fa";
 import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from "jwt-decode";
-import { useContext } from 'react'; 
-import { UserContext } from '../contexts/UserContext'; // Mette
+import {jwtDecode} from "jwt-decode"; // Assurez-vous que l'importation est correcte
+import { useContext } from 'react';
+import { UserContext } from '../contexts/UserContext';
 import { getToken } from '../services/api.auth.token';
 import { useForm } from 'react-hook-form';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { notifyError } from '../functions/toast'
+import { notifyError } from '../functions/toast';
 import { useNavigate, Link } from 'react-router-dom';
-import loginicon from '../logo.svg'
 
-
-import logo from '../assets/loginicon.jpg'
 import loginimagebg from "../assets/photos/Tiny_people_carrying_key_to_open_padlock-removebg-preview.png";
+import { getUserInformation } from "../services/api.user";
 
 function LoginPage() {
-	const { user,  setUser } = useContext(UserContext);
-    const {register, handleSubmit, setValue, formState: {
-		errors
-    } } = useForm();
-    const navigate = useNavigate();
+	const { setUser } = useContext(UserContext);
+	const { register, handleSubmit } = useForm();
+	const navigate = useNavigate();
 
-
-	// const handleLogin = (e) => {
-    //   e.preventDefault();
-    //   console.log("Logging in...");
-    // };
-
-    const onSubmit = handleSubmit(async (data) => {
-		console.log(data)
+	const onSubmit = handleSubmit(async (data) => {
 		try {
-			const res = await getToken(data)
-			console.log(res)
-			localStorage.setItem('token', res.data.access)
-			alert(res.data.access)
-			alert(jwtDecode(res.data.access))
-			setUser(jwtDecode(res.data.access))
+			const res = await getToken(data);
+			localStorage.setItem('token', res.data.access);
+			const decoded = jwtDecode(res.data.access);
+			const result = await getUserInformation(decoded.user_id);
+			setUser(result.data);
 			navigate('/home');
-			window.location.reload(); 
-		} catch (error) { 
+		} catch (error) {
 			if (error.response) {
 				if (error.response.status === 401) {
 					notifyError("Incorrect username or password");
-				} else if(error.message) {
+				} else if (error.message) {
 					notifyError(error.message);
 				}
 			} else if (error.request) {
@@ -54,22 +41,20 @@ function LoginPage() {
 				notifyError(error.message);
 			}
 		}
+	});
 
-    });
-
-    const handleOAuthLogin = (credentialResponse) => {
+	const handleOAuthLogin = (credentialResponse) => {
 		try {
 			const decoded = jwtDecode(credentialResponse.credential);
-			console.log(decoded);
 			setUser(decoded);
+			navigate('/home');
 		} catch (error) {
 			console.error('Failed to decode or set user', error);
 		}
-    };
-
+	};
 
 	return (
-		<div className=" flex flex-row flex-wrap items-center justify-center min-h-screen bg-gray-100 gap gap-3 ">
+		<div className="flex flex-row flex-wrap items-center justify-center min-h-screen bg-gray-100 gap-3">
 			<img src={loginimagebg} alt="Error" className="h-64"/>
 			<div className="flex items-center justify-center min-h-screen px-4 bg-gray-100">
 				<div className="px-8 py-6 mt-4 text-left bg-white ">
@@ -80,33 +65,33 @@ function LoginPage() {
 							<label className="block" htmlFor="username">Nom d'utilisateur</label>
 							<input type="text" placeholder="Nom d'utilisateur"
 								   id="username"
-								   {...register('username', {required: true})}
+								   {...register('username', { required: true })}
 								   className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
 							/>
 							<label className="block mt-4" htmlFor="password">Mot de passe</label>
 							<input type="password" placeholder="Mot de passe"
 								   id="password"
-								   {...register('password', {required: true})}
+								   {...register('password', { required: true })}
 								   className="w-full px-4 py-2 mt-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
 							/>
 							<div className="mt-3">
 								<p>
-									<Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">Mot de
-										passe oublié</Link>
+									<Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">Mot de passe oublié</Link>
 								</p>
 							</div>
 							<button type="submit"
-									className=" text-center py-2 mt-4 text-white bg-blue-600 rounded-lg hover:bg-blue-900">Connexion
+									className="text-center py-2 mt-4 text-white bg-blue-600 rounded-lg hover:bg-blue-900">
+								Connexion
 							</button>
 						</div>
 					</form>
-					<div className=" text-center mt-3">
-						<span>Pas de compte?
-							<Link to="/register" className="w-full text-sm text-blue-600 hover:underline">S'inscrire</Link>
-						</span>
+					<div className="text-center mt-3">
+            <span>Pas de compte?
+              <Link to="/register" className="w-full text-sm text-blue-600 hover:underline">S'inscrire</Link>
+            </span>
 						<span>Ou:</span>
 					</div>
-					<div className="flex  items-center mt-6 mx-2">
+					<div className="flex items-center mt-6 mx-2">
 						<GoogleLogin
 							onSuccess={handleOAuthLogin}
 							onError={() => console.log('Login Failed')}
@@ -123,9 +108,7 @@ function LoginPage() {
 					</div>
 				</div>
 			</div>
-
 		</div>
-
 	);
 }
 
