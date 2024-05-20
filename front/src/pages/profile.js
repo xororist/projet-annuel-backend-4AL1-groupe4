@@ -13,7 +13,8 @@ const Profile = () => {
         last_name: '',
         username: '',
         email: '',
-        password: ''
+        password: '',
+        profile_picture: userProfileImage
     });
     const [errors, setErrors] = useState({});
     const navigate = useNavigate();
@@ -25,7 +26,8 @@ const Profile = () => {
                 last_name: user.last_name,
                 username: user.username,
                 email: user.email,
-                password: user.password
+                password: '', // Par sécurité, ne jamais pré-remplir le mot de passe
+                profile_picture: user.profile_picture || userProfileImage
             });
         }
     }, [user]);
@@ -70,7 +72,9 @@ const Profile = () => {
         validateField('last_name', userData.last_name);
         validateField('username', userData.username);
         validateField('email', userData.email);
-        validateField('password', userData.password);
+        if (userData.password) {
+            validateField('password', userData.password);
+        }
         setErrors(tempErrors);
         return Object.keys(tempErrors).length === 0;
     };
@@ -79,12 +83,11 @@ const Profile = () => {
         e.preventDefault();
         if (validate()) {
             try {
-
                 const { password, ...data } = userData;
                 if (!userData.password) {
                     delete data.password;
                 }
-                const response = await updateUserInformation(user.id, userData);
+                const response = await updateUserInformation(user.id, data);
                 setUser(response.data);
                 Swal.fire({
                     icon: 'success',
@@ -131,7 +134,7 @@ const Profile = () => {
                     </button>
                 </div>
                 <div className="flex flex-col items-center w-full md:w-1/3">
-                    <img src={userProfileImage} alt="User" className="rounded-full h-32 w-32" />
+                    <img src={userData?.profile_picture} alt="User" className="rounded-full h-32 w-32" />
                     <h2 className="text-2xl font-bold mt-4">{user?.first_name} {user?.last_name}</h2>
                     <p className="text-gray-500">Security Lead</p>
                     <button className="mt-4 flex items-center text-blue-500 hover:text-blue-700">
@@ -197,7 +200,7 @@ const Profile = () => {
                             <input
                                 type="password"
                                 name="password"
-                                value={user?.password}
+                                value={userData.password}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
                             />

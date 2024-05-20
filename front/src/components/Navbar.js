@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSignOutAlt, FaGlobe, FaMoon, FaUserEdit } from "react-icons/fa";
-import loginicon from '../logo.svg';
+import { googleLogout } from '@react-oauth/google';
+import loginicon from '../logo.svg'; // Image par défaut
 import { UserContext } from "../contexts/UserContext";
 
 function Navbar() {
@@ -35,6 +36,7 @@ function Navbar() {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    googleLogout();
     navigate("/login");
   };
 
@@ -73,7 +75,7 @@ function Navbar() {
                         className="focus:outline-none"
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-white">
-                        <img src={loginicon} alt="Profile" className="w-full h-full object-cover"/>
+                        <img src={user.profile_picture || loginicon} alt="Profile" className="w-full h-full object-cover"/>
                       </div>
                     </button>
                     {profileDropdownOpen && (
@@ -95,8 +97,7 @@ function Navbar() {
                         </div>
                     )}
                   </div>
-                  <span className="text-gray-400 ml-4">{user?.first_name}  {user?.last_name}</span>
-
+                  <span className="text-gray-400 ml-4">{user?.first_name} {user?.last_name}</span>
                 </>
             )}
             <div className="relative ml-4 flex items-center" ref={languageDropdownRef}>

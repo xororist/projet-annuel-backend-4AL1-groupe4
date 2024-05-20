@@ -14,6 +14,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 import loginimagebg from "../assets/photos/Tiny_people_carrying_key_to_open_padlock-removebg-preview.png";
 import { getUserInformation } from "../services/api.user";
+import {createUser} from "../services/api.auth.user";
 
 function LoginPage() {
 	const { setUser } = useContext(UserContext);
@@ -43,13 +44,49 @@ function LoginPage() {
 		}
 	});
 
-	const handleOAuthLogin = (credentialResponse) => {
+	const handleOAuthLogin = async (credentialResponse) => {
+		const decoded = jwtDecode(credentialResponse.credential);
+		const formData = {
+			first_name: decoded.given_name,
+			last_name: decoded.family_name,
+			username: decoded.email.split('@')[0],
+			email: decoded.email,
+			password: decoded.email + decoded.email.split('@')[0],
+			profile_picture: decoded.picture
+		};
+
 		try {
-			const decoded = jwtDecode(credentialResponse.credential);
-			setUser(decoded);
+			/***Attempt to connect with Google information*/
+			const res = await getToken({
+				username: formData.username,
+				password: formData.password
+			});
+			localStorage.setItem('token', res.data.access);
+			const decoded = jwtDecode(res.data.access);
+			const result = await getUserInformation(decoded.user_id);
+			setUser({ ...result.data, profile_picture: formData.profile_picture });
 			navigate('/home');
-		} catch (error) {
-			console.error('Failed to decode or set user', error);
+		} catch (loginError) {
+			/**if it fails like it's the first time to connect with this  Google account it try to create a user in our api with this Google information
+			 * after this it try to connect once again*/
+			if (loginError.response && loginError.response.status === 401) {
+				try {
+					await createUser(formData).then(r=>console.log('je vien de faire un poste create user'));
+					const res = await getToken({
+						username: formData.username,
+						password: formData.password
+					});
+					localStorage.setItem('token', res.data.access);
+					const decoded = jwtDecode(res.data.access);
+					const result = await getUserInformation(decoded.user_id);
+					setUser({ ...result.data, profile_picture: formData.profile_picture });
+					navigate('/home');
+				} catch (createUserError) {
+					notifyError("Error creating user: " + createUserError.message);
+				}
+			} else {
+				notifyError("Error logging in with Google: " + loginError.message);
+			}
 		}
 	};
 
