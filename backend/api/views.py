@@ -120,6 +120,7 @@ class ExecuteCodeView(APIView):
         script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
 
         if not os.path.exists(script_path):
+            print(script_path)
             return Response({"error": "Python script file not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Executing the script in a subprocess
