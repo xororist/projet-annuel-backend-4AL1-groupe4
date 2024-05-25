@@ -10,4 +10,5 @@ urlpatterns = [
     path("programs/<int:pk>/", views.ProgramUpdate.as_view(), name="update-program"),
     path("programs/delete/<int:pk>/", views.ProgramDelete.as_view(), name="delete-program"),
     path("execute/", ExecuteCodeView.as_view(), name="execute-code")
+
 ]

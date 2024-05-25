@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+RUN mkdir -p /app/media/programs
+
 ARG UID=10001
 RUN adduser \
     --disabled-password \

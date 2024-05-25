@@ -4,10 +4,12 @@ services:
       context: .
     ports:
       - "8000:8000"
+    volumes:
+      - programs-data:/app/media/programs
     depends_on:
       db:
         condition: service_healthy
-  
+
   db:
     image: postgres
     restart: always
@@ -26,9 +28,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
 volumes:
   db-data:
+  programs-data:
+
 secrets:
   db-password:
     file: db/password.txt
-
