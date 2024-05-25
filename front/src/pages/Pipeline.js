@@ -31,15 +31,23 @@ const Pipeline = () => {
     };
 
     const handleExecute = async () => {
-        if (!file) {
-            alert("Please select a file first");
+        if (!file || !selectedProgram) {
+            alert("Please select a file and a program first");
             return;
         }
-
+    
         setLoading(true);
         const formData = new FormData();
-        formData.append('program', selectedProgram.file); // Assuming program file is required
+        const urlParts = selectedProgram.file.split('/');
+        const fileId = urlParts[urlParts.length - 1].split('.')[0]; // Extracting the UUID from the file URL
+        formData.append('program', fileId); // Sending the extracted UUID as program ID
         formData.append('file', file);
+        console.log(formData)
+
+        // Debugging: Logging formData keys and values
+        for (let pair of formData.entries()) {
+            console.log(`${pair[0]}: ${pair[1].name || pair[1]}`); // Log the name if it's a file
+        }
 
         try {
             const response = await executeProgram(formData);
