@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaSignOutAlt, FaGlobe, FaMoon, FaUserEdit } from "react-icons/fa";
+import { FaSignOutAlt, FaGlobe, FaMoon, FaUserEdit,FaFileAlt } from "react-icons/fa";
 import { googleLogout } from '@react-oauth/google';
 import loginicon from '../logo.svg'; // Image par défaut
 import { UserContext } from "../contexts/UserContext";
@@ -92,6 +92,10 @@ function Navbar() {
                                      className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>}
                         <a href="/editor"
                            className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Editor</a>
+
+                        <a href="/pipeline"
+                           className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Pipeline</a>
+
                     </div>
                     {user && (
                         <>
@@ -115,12 +119,18 @@ function Navbar() {
                                            className="block px-4 py-2 text-gray-800 hover:bg-gray-200 flex items-center">
                                             <FaUserEdit className="mr-2"/> Modifier Profil
                                         </a>
+                                        <a href="/programmes"
+                                            className="block px-4 py-2 text-gray-800 hover:bg-gray-200 flex items-center">
+                                            <FaFileAlt className="mr-2"/> Programmes
+                                        </a>
+
                                         <button
                                             onClick={handleSignOut}
                                             className="w-full text-left block px-4 py-2 text-gray-800 hover:bg-gray-200 flex items-center"
                                         >
                                             <FaSignOutAlt className="mr-2"/> Déconnexion
                                         </button>
+                                     
                                     </div>
                                 )}
                             </div>

@@ -19,3 +19,9 @@ export const getPublicPrograms = () => baseUrl.get("/programs/public/all");
 export const updateProgram = (programId, programData) => baseUrl.put(`/programs/${programId}/`, programData);
 
 export const patchProgram = (programId, programData) => baseUrl.patch(`/programs/${programId}/`, programData);
+
+export const executeProgram = (formData) => baseUrl.post("/execute/", formData, {
+    headers: {
+        'Content-Type': 'multipart/form-data'
+    }
+});

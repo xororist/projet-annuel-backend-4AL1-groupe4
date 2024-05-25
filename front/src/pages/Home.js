@@ -35,6 +35,7 @@ function Home() {
     const fetchPrograms = async () => {
         try {
             const response = await getPrograms();
+            response  = response.data
             setPrograms(response.data);
             setFilteredPrograms(response.data);
         } catch (error) {
