@@ -1,8 +1,11 @@
 from django.contrib.auth.models import User
 from rest_framework import generics
-from .serializers import UserSerializer, ProgramSerializer
+from rest_framework.decorators import action
+
+from .serializers import UserSerializer, ProgramSerializer, ProgramActionSerializer, NotificationSerializer, \
+    GroupSerializer, FriendshipSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Program
+from .models import Program, ProgramAction, Notification, Group, Friendship
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -60,7 +63,13 @@ class ProgramDelete(generics.DestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         return Program.objects.filter(author=user)
-    
+
+
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -86,8 +95,8 @@ class UserUpdateView(generics.UpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return User.objects.filter(pk=user.pk) 
-    
+        return User.objects.filter(pk=user.pk)
+
     def perform_update(self, serializer):
         if serializer.is_valid():
             serializer.save()
@@ -143,3 +152,157 @@ class ExecuteCodeView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ProgramActionUpdateView(generics.UpdateAPIView):
+    queryset = ProgramAction.objects.all()
+    serializer_class = ProgramActionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ProgramAction.objects.filter(author=user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class ProgramActionDeleteView(generics.DestroyAPIView):
+    queryset = ProgramAction.objects.all()
+    serializer_class = ProgramActionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ProgramAction.objects.filter(author=user)
+
+
+class ProgramActionListCreate(generics.ListCreateAPIView):
+    serializer_class = ProgramActionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return ProgramAction.objects.none()  # Retourne un queryset vide pour Swagger
+        program_id = self.kwargs.get('program_id')
+        if program_id:
+            return ProgramAction.objects.filter(program__id=program_id, parent=None)
+        return ProgramAction.objects.none()
+
+    def perform_create(self, serializer):
+        parent_id = self.request.data.get('parent')
+        parent_action = None
+        if parent_id:
+            parent_action = ProgramAction.objects.get(id=parent_id)
+        action = serializer.save(author=self.request.user, parent=parent_action, program_id=self.kwargs['program_id'])
+
+        # Create a notification for the program owner
+        program = Program.objects.get(id=self.kwargs['program_id'])
+        Notification.objects.create(
+            recipient=program.author,
+            author=self.request.user,
+            action=action.action if action.action else "comment",
+            program=program
+        )
+
+
+class ProgramActionRetrieveUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ProgramAction.objects.all()
+    serializer_class = ProgramActionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return ProgramAction.objects.none()  # Retourne un queryset vide pour Swagger
+        return ProgramAction.objects.filter(program__id=self.kwargs['program_id'])
+
+
+class NotificationListCreate(generics.ListCreateAPIView):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Notification.objects.none()  # Retourne un queryset vide pour Swagger
+        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+
+
+class NotificationUpdate(generics.UpdateAPIView):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, *args, **kwargs):
+        notification_id = kwargs.get('pk')
+        notification = Notification.objects.get(id=notification_id, recipient=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GroupListCreate(generics.ListCreateAPIView):
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class GroupRetrieveUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class FriendshipListCreate(generics.ListCreateAPIView):
+    queryset = Friendship.objects.all()
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        friend_id = self.request.data.get('friend')
+        friend = User.objects.get(id=friend_id)
+        Friendship.objects.create(user=user, friend=friend)
+
+
+class FriendshipDelete(generics.DestroyAPIView):
+    queryset = Friendship.objects.all()
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        user = self.request.user
+        friend_id = self.kwargs['friend_id']
+        return Friendship.objects.get(user=user, friend_id=friend_id)
+
+
+class AddFriendView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        user = request.user
+        friend_id = request.data.get('friend_id')
+        if not friend_id:
+            return Response({"error": "Friend ID is required"}, status=400)
+        try:
+            friend = User.objects.get(id=friend_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+        if Friendship.objects.filter(user=user, friend=friend).exists():
+            return Response({"error": "Already friends"}, status=400)
+        Friendship.objects.create(user=user, friend=friend)
+        Friendship.objects.create(user=friend, friend=user)  # Create the reverse friendship
+        return Response({"success": "Friend added"}, status=201)
+
+
+class ListFriendsView(generics.ListAPIView):
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Friendship.objects.filter(user=self.request.user)
+
+

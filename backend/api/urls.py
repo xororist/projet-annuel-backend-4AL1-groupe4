@@ -1,14 +1,28 @@
 from django.urls import path
 from . import views
-from .views import ExecuteCodeView
+from .views import ExecuteCodeView, ProgramActionListCreate, ProgramActionRetrieveUpdateDelete, NotificationListCreate, \
+    NotificationUpdate, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
+    AddFriendView, ListFriendsView, UserListView
 
 urlpatterns = [
     path("user/informations/<int:pk>/", views.UserRetrieveView.as_view(), name="user-detail"),
     path("user/update/<int:pk>/", views.UserUpdateView.as_view(), name="user-update"),
+    path('user/all/', UserListView.as_view(), name='user-list'),
     path("programs/", views.ProgramListCreate.as_view(), name="program-list"),
     path("programs/public/all/", views.ProgramList.as_view(), name="program-list-public-all"),
     path("programs/<int:pk>/", views.ProgramUpdate.as_view(), name="update-program"),
     path("programs/delete/<int:pk>/", views.ProgramDelete.as_view(), name="delete-program"),
-    path("execute/", ExecuteCodeView.as_view(), name="execute-code")
+    path("execute/", ExecuteCodeView.as_view(), name="execute-code"),
+    path('programs/<int:program_id>/actions/', ProgramActionListCreate.as_view(), name='program-action-list-create'),
+    path('programs/<int:program_id>/actions/<int:pk>/', ProgramActionRetrieveUpdateDelete.as_view(),
+         name='program-action-retrieve-update-delete'),
+    path('notifications/', NotificationListCreate.as_view(), name='notification-list-create'),
+    path('notifications/<int:pk>/', NotificationUpdate.as_view(), name='notification-update'),
+    path('groups/', GroupListCreate.as_view(), name='group-list-create'),
+    path('groups/<int:pk>/', GroupRetrieveUpdateDelete.as_view(), name='group-retrieve-update-delete'),
+    path('friendships/', FriendshipListCreate.as_view(), name='friendship-list-create'),
+    path('friendships/<int:friend_id>/', FriendshipDelete.as_view(), name='friendship-delete'),
+    path('friends/add/', AddFriendView.as_view(), name='add-friend'),
+    path('friends/', ListFriendsView.as_view(), name='list-friends'),
 
 ]
