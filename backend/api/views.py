@@ -1,11 +1,10 @@
 from django.contrib.auth.models import User
-from rest_framework import generics
-from rest_framework.decorators import action
+from rest_framework import generics, viewsets
 
-from .serializers import UserSerializer, ProgramSerializer, ProgramActionSerializer, NotificationSerializer, \
-    GroupSerializer, FriendshipSerializer
+from .serializers import UserSerializer, ProgramSerializer, \
+    GroupSerializer, FriendshipSerializer, ActionSerializer, CommentSerializer, NotificationSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Program, ProgramAction, Notification, Group, Friendship
+from .models import Program, Group, Friendship, Action, Comment, Notification
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -154,93 +153,6 @@ class ExecuteCodeView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ProgramActionUpdateView(generics.UpdateAPIView):
-    queryset = ProgramAction.objects.all()
-    serializer_class = ProgramActionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        return ProgramAction.objects.filter(author=user)
-
-    def perform_update(self, serializer):
-        serializer.save()
-
-
-class ProgramActionDeleteView(generics.DestroyAPIView):
-    queryset = ProgramAction.objects.all()
-    serializer_class = ProgramActionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        return ProgramAction.objects.filter(author=user)
-
-
-class ProgramActionListCreate(generics.ListCreateAPIView):
-    serializer_class = ProgramActionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return ProgramAction.objects.none()  # Retourne un queryset vide pour Swagger
-        program_id = self.kwargs.get('program_id')
-        if program_id:
-            return ProgramAction.objects.filter(program__id=program_id, parent=None)
-        return ProgramAction.objects.none()
-
-    def perform_create(self, serializer):
-        parent_id = self.request.data.get('parent')
-        parent_action = None
-        if parent_id:
-            parent_action = ProgramAction.objects.get(id=parent_id)
-        action = serializer.save(author=self.request.user, parent=parent_action, program_id=self.kwargs['program_id'])
-
-        # Create a notification for the program owner
-        program = Program.objects.get(id=self.kwargs['program_id'])
-        Notification.objects.create(
-            recipient=program.author,
-            author=self.request.user,
-            action=action.action if action.action else "comment",
-            program=program
-        )
-
-
-class ProgramActionRetrieveUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
-    queryset = ProgramAction.objects.all()
-    serializer_class = ProgramActionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return ProgramAction.objects.none()  # Retourne un queryset vide pour Swagger
-        return ProgramAction.objects.filter(program__id=self.kwargs['program_id'])
-
-
-class NotificationListCreate(generics.ListCreateAPIView):
-    queryset = Notification.objects.all()
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Notification.objects.none()  # Retourne un queryset vide pour Swagger
-        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
-
-
-class NotificationUpdate(generics.UpdateAPIView):
-    queryset = Notification.objects.all()
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, *args, **kwargs):
-        notification_id = kwargs.get('pk')
-        notification = Notification.objects.get(id=notification_id, recipient=request.user)
-        notification.is_read = True
-        notification.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 class GroupListCreate(generics.ListCreateAPIView):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
@@ -306,3 +218,58 @@ class ListFriendsView(generics.ListAPIView):
         return Friendship.objects.filter(user=self.request.user)
 
 
+class ActionViewSet(viewsets.ModelViewSet):
+    queryset = Action.objects.all()
+    serializer_class = ActionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        action_instance = serializer.save(author=self.request.user)
+        if action_instance.program:
+            recipient = action_instance.program.author
+        elif action_instance.comment:
+            recipient = action_instance.comment.author
+        else:
+            return
+
+        Notification.objects.create(
+            recipient=recipient,
+            sender=self.request.user,
+            action_type=action_instance.action,
+            program=action_instance.program,
+            comment=action_instance.comment
+        )
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        comment_instance = serializer.save(author=self.request.user)
+        if comment_instance.parent:
+            recipient = comment_instance.parent.author
+        else:
+            recipient = comment_instance.program.author
+
+        Notification.objects.create(
+            recipient=recipient,
+            sender=self.request.user,
+            action_type='comment',
+            program=comment_instance.program,
+            comment=comment_instance
+        )
+
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(recipient=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)

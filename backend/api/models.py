@@ -23,39 +23,6 @@ class Program(models.Model):
         return self.title
 
 
-class ProgramAction(models.Model):
-    ACTION_CHOICES = [
-        ('like', 'Like'),
-        ('dislike', 'Dislike'),
-        ('heart', 'Heart'),
-        ('comment', 'Comment')
-    ]
-
-    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name="actions")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="actions")
-    action = models.CharField(max_length=10, choices=ACTION_CHOICES, blank=True, null=True)
-    comment = models.TextField(blank=True, null=True)
-    parent = models.ForeignKey('self', null=True, blank=True, related_name='replies', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        if self.action:
-            return f"{self.user.username} {self.action} {self.program.title}"
-        return f"{self.user.username} commented on {self.program.title}"
-
-
-class Notification(models.Model):
-    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
-    action = models.CharField(max_length=50)
-    program = models.ForeignKey(Program, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Notification for {self.recipient.username} by {self.author.username} on {self.program.title}"
-
-
 class Group(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -77,3 +44,49 @@ class Friendship(models.Model):
 
     def __str__(self):
         return f"{self.user.username} is friends with {self.friend.username}"
+
+
+class Action(models.Model):
+    ACTION_CHOICES = [
+        ('like', 'Like'),
+        ('dislike', 'Dislike'),
+        ('share', 'Share'),
+        ('unshare', 'Unshare'),
+        ('love', 'Love'),
+        ('unlove', 'Unlove')
+    ]
+
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="actions")
+    program = models.ForeignKey('Program', on_delete=models.CASCADE, related_name="actions", null=True, blank=True)
+    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, related_name="actions", null=True, blank=True)
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        target = self.program.title if self.program else f"comment {self.comment.id}"
+        return f"{self.author.username} {self.action} {target}"
+
+
+class Comment(models.Model):
+    program = models.ForeignKey('Program', on_delete=models.CASCADE, related_name="comments", null=True, blank=True)
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='replies', on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.program.title if self.program else 'another comment'}"
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_notifications")
+    action_type = models.CharField(max_length=50)
+    program = models.ForeignKey('Program', on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
+    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Notification for {self.recipient.username} from {self.sender.username}"

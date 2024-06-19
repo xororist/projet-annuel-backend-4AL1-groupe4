@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Program, ProgramAction, Notification, Group, Friendship
+from .models import Program, Group, Friendship, Action, Comment, Notification
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,40 +32,6 @@ class ProgramSerializer(serializers.ModelSerializer):
         }
 
 
-class ProgramActionSerializer(serializers.ModelSerializer):
-    author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
-    replies = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ProgramAction
-        fields = ["id", "program", "author_id", "action", "comment", "parent", "replies", "created_at"]
-        extra_kwargs = {
-            "author": {"read_only": True},
-            "parent": {"read_only": True},
-            "program": {"read_only": True}
-        }
-
-    def get_replies(self, obj):
-        if obj.replies.exists():
-            return ProgramActionSerializer(obj.replies.all(), many=True).data
-        return None
-
-    def validate(self, data):
-        if not data.get('action') and not data.get('comment'):
-            raise serializers.ValidationError("Either action or comment must be provided.")
-        return data
-
-
-class NotificationSerializer(serializers.ModelSerializer):
-    author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
-    program_id = serializers.PrimaryKeyRelatedField(source='program', read_only=True)
-    recipient_id = serializers.PrimaryKeyRelatedField(source='recipient', read_only=True)
-
-    class Meta:
-        model = Notification
-        fields = ["id", "recipient_id", "author_id", "action", "program_id", "created_at", "is_read"]
-
-
 class GroupSerializer(serializers.ModelSerializer):
     author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
     members = UserSerializer(many=True, read_only=True)
@@ -81,3 +47,47 @@ class FriendshipSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "friend", "created_at"]
 
 
+class ActionSerializer(serializers.ModelSerializer):
+    author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
+
+    class Meta:
+        model = Action
+        fields = ["id", "author_id", "program", "comment", "action", "created_at"]
+        extra_kwargs = {
+            "author": {"read_only": True},
+            "program": {"read_only": True},
+            "comment": {"read_only": True}
+        }
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ["id", "program", "author_id", "text", "parent", "replies", "created_at", "updated_at"]
+        extra_kwargs = {
+            "author": {"read_only": True},
+            "parent": {"read_only": True},
+            "program": {"read_only": True}
+        }
+
+    def get_replies(self, obj):
+        if obj.replies.exists():
+            return CommentSerializer(obj.replies.all(), many=True).data
+        return None
+
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    sender_id = serializers.PrimaryKeyRelatedField(source='sender', read_only=True)
+    recipient_id = serializers.PrimaryKeyRelatedField(source='recipient', read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = ["id", "recipient_id", "sender_id", "action_type", "program", "comment", "created_at", "read"]
+        extra_kwargs = {
+            "sender": {"read_only": True},
+            "recipient": {"read_only": True}
+        }

@@ -1,10 +1,18 @@
 from django.urls import path
 from . import views
-from .views import ExecuteCodeView, ProgramActionListCreate, ProgramActionRetrieveUpdateDelete, NotificationListCreate, \
-    NotificationUpdate, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
-    AddFriendView, ListFriendsView, UserListView
+from .views import ExecuteCodeView, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
+    AddFriendView, ListFriendsView, UserListView, NotificationViewSet
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import  ActionViewSet, CommentViewSet
+
+router = DefaultRouter()
+router.register(r'actions', ActionViewSet, basename='action')
+router.register(r'comments', CommentViewSet, basename='comment')
+router.register(r'notifications', NotificationViewSet, basename='notification')
 
 urlpatterns = [
+    path('', include(router.urls)),
     path("user/informations/<int:pk>/", views.UserRetrieveView.as_view(), name="user-detail"),
     path("user/update/<int:pk>/", views.UserUpdateView.as_view(), name="user-update"),
     path('user/all/', UserListView.as_view(), name='user-list'),
@@ -13,11 +21,6 @@ urlpatterns = [
     path("programs/<int:pk>/", views.ProgramUpdate.as_view(), name="update-program"),
     path("programs/delete/<int:pk>/", views.ProgramDelete.as_view(), name="delete-program"),
     path("execute/", ExecuteCodeView.as_view(), name="execute-code"),
-    path('programs/<int:program_id>/actions/', ProgramActionListCreate.as_view(), name='program-action-list-create'),
-    path('programs/<int:program_id>/actions/<int:pk>/', ProgramActionRetrieveUpdateDelete.as_view(),
-         name='program-action-retrieve-update-delete'),
-    path('notifications/', NotificationListCreate.as_view(), name='notification-list-create'),
-    path('notifications/<int:pk>/', NotificationUpdate.as_view(), name='notification-update'),
     path('groups/', GroupListCreate.as_view(), name='group-list-create'),
     path('groups/<int:pk>/', GroupRetrieveUpdateDelete.as_view(), name='group-retrieve-update-delete'),
     path('friendships/', FriendshipListCreate.as_view(), name='friendship-list-create'),
