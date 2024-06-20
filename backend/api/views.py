@@ -247,11 +247,10 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        comment_instance = serializer.save(author=self.request.user)
-        if comment_instance.parent:
-            recipient = comment_instance.parent.author
-        else:
-            recipient = comment_instance.program.author
+        program_id = self.request.data.get('program')
+        program = Program.objects.get(id=program_id)
+        comment_instance = serializer.save(author=self.request.user, program=program)
+        recipient = comment_instance.parent.author if comment_instance.parent else comment_instance.program.author
 
         Notification.objects.create(
             recipient=recipient,
@@ -260,7 +259,6 @@ class CommentViewSet(viewsets.ModelViewSet):
             program=comment_instance.program,
             comment=comment_instance
         )
-
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
