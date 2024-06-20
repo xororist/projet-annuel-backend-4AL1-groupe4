@@ -109,18 +109,15 @@ class UserUpdateView(generics.UpdateAPIView):
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    # We get script name to be executed and file that will be modified from the request body form-data
     def post(self, request, *args, **kwargs):
         program = request.data.get('program')
         file = request.FILES.get('file')
 
-        # Checking if bot param are filled, if not we throw a 404 error.
         if not program or not file:
             return Response({"error": "Program file name and uploaded file are required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         uploaded_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', file.name)
-
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
                 destination.write(content)
@@ -128,30 +125,47 @@ class ExecuteCodeView(APIView):
         script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
 
         if not os.path.exists(script_path):
-            print(script_path)
-            return Response({"error": "Python script file not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Script file not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Executing the script in a subprocess
+        # Determine the command to run based on the script type
+        file_extension = os.path.splitext(program)[1]
+        output_dir = "/tmp"
+        env = os.environ.copy()
+        env["OUTPUT_DIR"] = output_dir
+
+        if file_extension == '.py':
+            command = ['python', script_path, uploaded_file_path]
+        elif file_extension == '.go':
+            # Build and run the Go program
+            build_command = ['go', 'build', '-o', '/tmp/go_program', script_path]
+            try:
+                subprocess.run(build_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            except subprocess.CalledProcessError as e:
+                return Response({"error": e.stderr}, status=status.HTTP_400_BAD_REQUEST)
+            command = ['/tmp/go_program', uploaded_file_path]
+        else:
+            return Response({"error": "Unsupported script type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Execute the script in a subprocess
         try:
             process = subprocess.Popen(
-                ['python', script_path, uploaded_file_path],
+                command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                env=env
             )
             stdout, stderr = process.communicate()
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
 
-            file_path = stdout.strip().split(": ")[-1]
-            file_name = os.path.basename("output")
+            file_path = os.path.join(output_dir, "output.txt")
 
-            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=file_name)
+            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename="output.txt")
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class GroupListCreate(generics.ListCreateAPIView):
     queryset = Group.objects.all()
