@@ -117,3 +117,10 @@ CORS_ALLOW_CREDENTIALS = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+AWS_ACCESS_KEY_ID = 'AKIA47CRYH3NUZGAJQUW'
+AWS_SECRET_ACCESS_KEY = 'e9lLRacQTSdFmVjfYDxqPEAFDmgNDG5QEapMf4ed'
+AWS_STORAGE_BUCKET_NAME = 'scripts-input-pa-esgi'
+AWS_S3_REGION_NAME = 'eu-north-1'  # e.g., 'us-west-1'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
