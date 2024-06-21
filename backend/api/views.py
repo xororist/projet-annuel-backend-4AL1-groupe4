@@ -249,7 +249,12 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         program_id = self.request.data.get('program')
         program = Program.objects.get(id=program_id)
-        comment_instance = serializer.save(author=self.request.user, program=program)
+
+        parent_id = self.request.data.get('parent')
+        parent = Comment.objects.get(id=parent_id) if parent_id else None
+
+        comment_instance = serializer.save(author=self.request.user, program=program, parent=parent)
+
         recipient = comment_instance.parent.author if comment_instance.parent else comment_instance.program.author
 
         Notification.objects.create(
