@@ -1,4 +1,3 @@
-import boto3
 from django.conf import settings
 from rest_framework import generics, viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -10,12 +9,22 @@ from django.http import FileResponse
 from django.contrib.auth.models import User
 import os
 import subprocess
+import boto3
+import os
+import subprocess
+import boto3
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+
 
 from .serializers import (
     UserSerializer, ProgramSerializer, GroupSerializer,
     FriendshipSerializer, ActionSerializer, CommentSerializer, NotificationSerializer
 )
-from .models import Program, Group, Friendship, Action, Comment, Notification, get_unique_filename
+from .models import Program, Group, Friendship, Action, Comment, Notification
 
 class ProgramList(generics.ListAPIView):
     serializer_class = ProgramSerializer
@@ -35,35 +44,8 @@ class ProgramListCreate(generics.ListCreateAPIView):
         return Program.objects.filter(author=user)
 
     def perform_create(self, serializer):
-        file = self.request.FILES.get('file')
-        if file:
-            # Generate a unique filename
-            unique_filename = get_unique_filename(None, file.name)
+        serializer.save(author=self.request.user)
 
-            # Upload file to S3
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
-
-            try:
-                s3_client.upload_fileobj(
-                    file,
-                    settings.AWS_STORAGE_BUCKET_NAME,
-                    unique_filename,
-                    ExtraArgs={'ContentType': file.content_type}
-                )
-                file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{unique_filename}"
-                program_instance = serializer.save(author=self.request.user)
-                # Manually set the file field with the unique filename
-                program_instance.file.save(unique_filename, file, save=False)
-                program_instance.save()
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            serializer.save(author=self.request.user)
 
 class ProgramUpdate(generics.UpdateAPIView):
     serializer_class = ProgramSerializer
@@ -90,13 +72,7 @@ class ProgramDelete(generics.DestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         return Program.objects.filter(author=user)
-
-
-class UserListView(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
+    
 
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -122,8 +98,8 @@ class UserUpdateView(generics.UpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return User.objects.filter(pk=user.pk)
-
+        return User.objects.filter(pk=user.pk) 
+    
     def perform_update(self, serializer):
         if serializer.is_valid():
             serializer.save()
@@ -137,6 +113,23 @@ class UserUpdateView(generics.UpdateAPIView):
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+
+        if object_name is None:
+            object_name = os.path.basename(file_path)
+        
+        try:
+            s3_client.upload_file(file_path, bucket_name, object_name)
+            return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
+        except Exception as e:
+            raise Exception(f"Failed to upload file to S3: {str(e)}")
+
     def post(self, request, *args, **kwargs):
         program = request.data.get('program')
         file = request.FILES.get('file')
@@ -145,82 +138,55 @@ class ExecuteCodeView(APIView):
             return Response({"error": "Program file name and uploaded file are required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Construct the S3 key for the program script
-        program_key = os.path.join('programs', program)
-
-        # Initialize S3 client
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-
-        # Verify the existence of the S3 object
-        try:
-            s3_client.head_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=program_key)
-        except s3_client.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                return Response({"error": "The specified program script does not exist in the S3 bucket."},
-                                status=status.HTTP_404_NOT_FOUND)
-            else:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # Download the program script from S3
-        script_path = os.path.join(settings.MEDIA_ROOT, 'programs', os.path.basename(program_key))
-        try:
-            s3_client.download_file(settings.AWS_STORAGE_BUCKET_NAME, program_key, script_path)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # Save the uploaded file to the local filesystem
         uploaded_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', file.name)
+
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
                 destination.write(content)
 
+        script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
+        program_extension = os.path.splitext(program)[1].lower()
+
         if not os.path.exists(script_path):
-            return Response({"error": "Script file not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Program script file not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Determine the command to run based on the script type
-        file_extension = os.path.splitext(script_path)[1]
-        output_dir = "/tmp"
-        env = os.environ.copy()
-        env["OUTPUT_DIR"] = output_dir
-
-        if file_extension == '.py':
-            command = ['python', script_path, uploaded_file_path]
-        elif file_extension == '.go':
-            # Build and run the Go program
-            build_command = ['go', 'build', '-o', '/tmp/go_program', script_path]
-            try:
-                subprocess.run(build_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            except subprocess.CalledProcessError as e:
-                return Response({"error": e.stderr}, status=status.HTTP_400_BAD_REQUEST)
-            command = ['/tmp/go_program', uploaded_file_path]
-        else:
-            return Response({"error": "Unsupported script type"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Execute the script in a subprocess
         try:
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                env=env
-            )
+            if program_extension == '.py':
+                process = subprocess.Popen(
+                    ['python', script_path, uploaded_file_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+            elif program_extension == '.go':
+                process = subprocess.Popen(
+                    ['go', 'run', script_path, uploaded_file_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+            else:
+                return Response({"error": "Unsupported file extension"}, status=status.HTTP_400_BAD_REQUEST)
+
             stdout, stderr = process.communicate()
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
 
-            file_path = os.path.join(output_dir, "output.txt")
+            file_path = stdout.strip().split(": ")[-1]
+            s3_bucket_name = 'scripts-output-pa-esgi'
+            s3_file_url = self.upload_file_to_s3(file_path, s3_bucket_name)
 
-            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename="output.txt")
+            return Response({"file_url": s3_file_url}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]   
 
 class GroupListCreate(generics.ListCreateAPIView):
     queryset = Group.objects.all()
