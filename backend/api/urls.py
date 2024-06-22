@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import ExecuteCodeView, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
-    AddFriendView, ListFriendsView, UserListView, NotificationViewSet
+    AddFriendView, ListFriendsView, UserDeleteView, UserListView, NotificationViewSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import  ActionViewSet, CommentViewSet
@@ -16,6 +16,7 @@ urlpatterns = [
     path("user/informations/<int:pk>/", views.UserRetrieveView.as_view(), name="user-detail"),
     path("user/update/<int:pk>/", views.UserUpdateView.as_view(), name="user-update"),
     path('user/all/', UserListView.as_view(), name='user-list'),
+    path('users/delete/', UserDeleteView.as_view(), name='user-delete'),
     path("programs/", views.ProgramListCreate.as_view(), name="program-list"),
     path("programs/public/all/", views.ProgramList.as_view(), name="program-list-public-all"),
     path("programs/<int:pk>/", views.ProgramUpdate.as_view(), name="update-program"),

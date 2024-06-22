@@ -110,6 +110,22 @@ class UserUpdateView(generics.UpdateAPIView):
         return self.get_queryset().first()
 
 
+class UserDeleteView(generics.DestroyAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return User.objects.filter(pk=user.pk)
+
+    def get_object(self):
+        return self.get_queryset().first()
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
