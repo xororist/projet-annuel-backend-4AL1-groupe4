@@ -123,7 +123,7 @@ class ExecuteCodeView(APIView):
 
         if object_name is None:
             object_name = os.path.basename(file_path)
-        
+
         try:
             s3_client.upload_file(file_path, bucket_name, object_name)
             return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
@@ -161,6 +161,25 @@ class ExecuteCodeView(APIView):
             elif program_extension == '.go':
                 process = subprocess.Popen(
                     ['go', 'run', script_path, uploaded_file_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+            elif program_extension == '.cpp':
+                executable_path = os.path.join(settings.MEDIA_ROOT, 'programs', 'a.out')
+                compile_process = subprocess.Popen(
+                    ['g++', script_path, '-o', executable_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                compile_stdout, compile_stderr = compile_process.communicate()
+
+                if compile_process.returncode != 0:
+                    return Response({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
+
+                process = subprocess.Popen(
+                    [executable_path, uploaded_file_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True

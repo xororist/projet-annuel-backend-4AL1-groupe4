@@ -24,9 +24,10 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-# Install system dependencies and Go
+# Install system dependencies, Go, and C++ compiler
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
