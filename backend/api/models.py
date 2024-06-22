@@ -15,7 +15,8 @@ class Program(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="programs")
     file = models.FileField(upload_to=get_unique_filename, default='', blank=True)
     isVisible = models.BooleanField(default=True)
-
+    input_type = models.CharField(max_length=50, default='.txt')  
+    output_type = models.CharField(max_length=50, default='.txt') 
     def __str__(self) -> str:
         return self.title
 

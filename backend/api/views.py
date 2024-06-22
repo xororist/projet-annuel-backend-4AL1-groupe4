@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 from django.contrib.auth.models import User
 import os
 import subprocess
@@ -17,9 +17,6 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
-
-
 from .serializers import (
     UserSerializer, ProgramSerializer, GroupSerializer,
     FriendshipSerializer, ActionSerializer, CommentSerializer, NotificationSerializer
@@ -223,6 +220,7 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]   
 
+
 class GroupListCreate(generics.ListCreateAPIView):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
@@ -341,3 +339,102 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+
+
+class PipelineView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+
+        if object_name is None:
+            object_name = os.path.basename(file_path)
+
+        try:
+            s3_client.upload_file(file_path, bucket_name, object_name)
+            return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
+        except Exception as e:
+            raise Exception(f"Failed to upload file to S3: {str(e)}")
+
+    def post(self, request, *args, **kwargs):
+        programs = request.data.get('programs')
+        input_file = request.FILES.get('input_file')
+
+        if not programs or not input_file:
+            return JsonResponse({"error": "Program list and input file are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if isinstance(programs, str):
+            import json
+            programs = json.loads(programs)
+
+        input_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', input_file.name)
+
+        with open(input_file_path, 'wb+') as destination:
+            for content in input_file.chunks():
+                destination.write(content)
+
+        current_input_path = input_file_path
+
+        try:
+            for program in programs:
+                script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
+                program_extension = os.path.splitext(program)[1].lower()
+
+                if not os.path.exists(script_path):
+                    return JsonResponse({"error": f"Program script file '{program}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+                if program_extension == '.py':
+                    process = subprocess.Popen(
+                        ['python', script_path, current_input_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                elif program_extension == '.go':
+                    process = subprocess.Popen(
+                        ['go', 'run', script_path, current_input_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                elif program_extension == '.cpp':
+                    executable_path = os.path.join(settings.MEDIA_ROOT, 'programs', 'a.out')
+                    compile_process = subprocess.Popen(
+                        ['g++', script_path, '-o', executable_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                    compile_stdout, compile_stderr = compile_process.communicate()
+
+                    if compile_process.returncode != 0:
+                        return JsonResponse({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
+
+                    process = subprocess.Popen(
+                        [executable_path, current_input_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                else:
+                    return JsonResponse({"error": f"Unsupported file extension '{program_extension}'"}, status=status.HTTP_400_BAD_REQUEST)
+
+                stdout, stderr = process.communicate()
+
+                if process.returncode != 0:
+                    return JsonResponse({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
+
+                current_input_path = stdout.strip().split(": ")[-1]
+            
+            s3_bucket_name = 'scripts-output-pa-esgi'
+            s3_file_url = self.upload_file_to_s3(current_input_path, s3_bucket_name)
+
+            return JsonResponse({"file_url": s3_file_url}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
