@@ -3,7 +3,7 @@ version: '3.8'
 services:
   server:
     build:
-      context: /backend
+      context: backend/
     ports:
       - "8000:8000"
     volumes:
@@ -36,4 +36,4 @@ volumes:
 
 secrets:
   db-password:
-    file: db/password.txt
+    file: backend/db/password.txt

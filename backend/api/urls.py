@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import ExecuteCodeView, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
-    AddFriendView, ListFriendsView, PipelineView, UserDeleteView, UserListView, NotificationViewSet
+    AddFriendView, ListFriendsView, PipelineView, UploadAndExecuteView, UserDeleteView, UserListView, NotificationViewSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import  ActionViewSet, CommentViewSet
@@ -28,5 +28,7 @@ urlpatterns = [
     path('friendships/<int:friend_id>/', FriendshipDelete.as_view(), name='friendship-delete'),
     path('friends/add/', AddFriendView.as_view(), name='add-friend'),
     path('friends/', ListFriendsView.as_view(), name='list-friends'),
-    path("pipeline/", PipelineView.as_view(), name="pipeline-view"),  # Added PipelineView URL
+    path('pipeline/', PipelineView.as_view(), name="pipeline-view"),  # Added PipelineView URL
+    path('run/', UploadAndExecuteView.as_view(), name="upload-and-excute-view"),  # Added PipelineView URL
+
 ]
