@@ -35,15 +35,26 @@ class Group(models.Model):
 
 
 class Friendship(models.Model):
+    DEMANDE_ENVOYEE = 'sent'
+    DEMANDE_ACCEPTEE = 'accepted'
+    DEMANDE_REFUSEE = 'rejected'
+
+    STATUS_CHOICES = [
+        (DEMANDE_ENVOYEE, 'Demande envoyée'),
+        (DEMANDE_ACCEPTEE, 'Demande acceptée'),
+        (DEMANDE_REFUSEE, 'Demande refusée'),
+    ]
+
     user = models.ForeignKey(User, related_name='friends', on_delete=models.CASCADE)
     friend = models.ForeignKey(User, related_name='_friends', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=DEMANDE_ENVOYEE)
 
     class Meta:
         unique_together = ('user', 'friend')
 
     def __str__(self):
-        return f"{self.user.username} is friends with {self.friend.username}"
+        return f"{self.user.username} is friends with {self.friend.username} ({self.get_status_display()})"
 
 
 class Action(models.Model):

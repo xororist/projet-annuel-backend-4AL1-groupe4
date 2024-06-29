@@ -177,7 +177,7 @@ class FriendshipListCreate(generics.ListCreateAPIView):
         user = self.request.user
         friend_id = self.request.data.get('friend')
         friend = User.objects.get(id=friend_id)
-        Friendship.objects.create(user=user, friend=friend)
+        serializer.save(user=user, friend=friend, status=Friendship.DEMANDE_ENVOYEE)
 
 
 class FriendshipDelete(generics.DestroyAPIView):
@@ -204,11 +204,33 @@ class AddFriendView(APIView):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
         if Friendship.objects.filter(user=user, friend=friend).exists():
-            return Response({"error": "Already friends"}, status=400)
-        Friendship.objects.create(user=user, friend=friend)
-        Friendship.objects.create(user=friend, friend=user)  # Create the reverse friendship
-        return Response({"success": "Friend added"}, status=201)
+            return Response({"error": "Friendship request already sent"}, status=400)
+        Friendship.objects.create(user=user, friend=friend, status=Friendship.DEMANDE_ENVOYEE)
+        return Response({"success": "Friend request sent"}, status=201)
 
+
+class ManageFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, friend_id, action):
+        user = request.user
+        try:
+            friendship = Friendship.objects.get(user=friend_id, friend=user)
+        except Friendship.DoesNotExist:
+            return Response({"error": "Friend request not found"}, status=404)
+
+        if action == 'accept':
+            friendship.status = Friendship.DEMANDE_ACCEPTEE
+            friendship.save()
+            # Create the reverse friendship
+            Friendship.objects.create(user=user, friend=friendship.user, status=Friendship.DEMANDE_ACCEPTEE)
+            return Response({"success": "Friend request accepted"}, status=200)
+        elif action == 'reject':
+            friendship.status = Friendship.DEMANDE_REFUSEE
+            friendship.save()
+            return Response({"success": "Friend request rejected"}, status=200)
+        else:
+            return Response({"error": "Invalid action"}, status=400)
 
 class ListFriendsView(generics.ListAPIView):
     serializer_class = FriendshipSerializer
