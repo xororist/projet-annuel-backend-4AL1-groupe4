@@ -250,6 +250,28 @@ class FriendshipDelete(generics.DestroyAPIView):
         return Friendship.objects.get(user=self.request.user, friend_id=self.kwargs['friend_id'])
 
 
+class FriendshipUpdate(generics.UpdateAPIView):
+    queryset = Friendship.objects.all()
+    serializer_class = FriendshipSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        friendship_id = self.kwargs['friendship_id']
+        return Friendship.objects.get(id=friendship_id)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        status = request.data.get('status')
+        if status in [Friendship.DEMANDE_ENVOYEE, Friendship.DEMANDE_ACCEPTEE, Friendship.DEMANDE_REFUSEE]:
+            instance.status = status
+            instance.save()
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        else:
+            return Response({"error": "Invalid status"}, status=400)
+
+
 # View to add a friend, accessible only by authenticated users
 class AddFriendView(APIView):
     permission_classes = [IsAuthenticated]
@@ -291,6 +313,7 @@ class ManageFriendRequestView(APIView):
             return Response({"success": "Friend request rejected"}, status=200)
         else:
             return Response({"error": "Invalid action"}, status=400)
+
 
 class ListFriendsView(generics.ListAPIView):
     serializer_class = FriendshipSerializer
@@ -384,7 +407,8 @@ class PipelineView(APIView):
         input_file = request.FILES.get('input_file')
 
         if not programs or not input_file:
-            return JsonResponse({"error": "Program list and input file are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({"error": "Program list and input file are required."},
+                                status=status.HTTP_400_BAD_REQUEST)
 
         if isinstance(programs, str):
             programs = json.loads(programs)
@@ -403,7 +427,8 @@ class PipelineView(APIView):
                 program_extension = os.path.splitext(program)[1].lower()
 
                 if not os.path.exists(script_path):
-                    return JsonResponse({"error": f"Program script file '{program}' not found"}, status=status.HTTP_404_NOT_FOUND)
+                    return JsonResponse({"error": f"Program script file '{program}' not found"},
+                                        status=status.HTTP_404_NOT_FOUND)
 
                 if program_extension == '.py':
                     process = subprocess.Popen(
@@ -439,7 +464,8 @@ class PipelineView(APIView):
                         text=True
                     )
                 else:
-                    return JsonResponse({"error": f"Unsupported file extension '{program_extension}'"}, status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse({"error": f"Unsupported file extension '{program_extension}'"},
+                                        status=status.HTTP_400_BAD_REQUEST)
 
                 stdout, stderr = process.communicate()
 

@@ -25,7 +25,8 @@ class UserSerializer(serializers.ModelSerializer):
 class ProgramSerializer(serializers.ModelSerializer):
     class Meta:
         model = Program
-        fields = ["id", "title", "description", "created_at", "author", "file", "input_type", "output_type", "isVisible"]
+        fields = ["id", "title", "description", "created_at", "author", "file", "input_type", "output_type",
+                  "isVisible"]
         extra_kwargs = {
             "author": {"read_only": True},
             "file": {"required": False}
@@ -49,15 +50,24 @@ class FriendshipSerializer(serializers.ModelSerializer):
 
 class ActionSerializer(serializers.ModelSerializer):
     author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
+    program_id = serializers.PrimaryKeyRelatedField(queryset=Program.objects.all(), source='program', required=False)
+    comment_id = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), source='comment', required=False)
 
     class Meta:
         model = Action
-        fields = ["id", "author_id", "program", "comment", "action", "created_at"]
-        extra_kwargs = {
-            "author": {"read_only": True},
-            "program": {"read_only": True},
-            "comment": {"read_only": True}
-        }
+        fields = ["id", "author_id", "program_id", "comment_id", "action", "created_at"]
+
+    def validate(self, data):
+        if not data.get('program') and not data.get('comment'):
+            raise serializers.ValidationError("Un programme ou un commentaire doit être spécifié.")
+        if data.get('program') and data.get('comment'):
+            raise serializers.ValidationError(
+                "L'action ne peut être associée qu'à un programme ou un commentaire, pas les deux.")
+        return data
+
+    def create(self, validated_data):
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -77,7 +87,6 @@ class CommentSerializer(serializers.ModelSerializer):
         if obj.replies.exists():
             return CommentSerializer(obj.replies.all(), many=True).data
         return None
-
 
 
 class NotificationSerializer(serializers.ModelSerializer):
