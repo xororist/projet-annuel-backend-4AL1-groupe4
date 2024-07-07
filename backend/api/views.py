@@ -12,9 +12,9 @@ import subprocess
 import boto3
 from .serializers import (
     UserSerializer, ProgramSerializer, GroupSerializer,
-    FriendshipSerializer, ActionSerializer, CommentSerializer, NotificationSerializer
+    FriendshipSerializer, ActionSerializer, CommentSerializer, NotificationSerializer, MessageSerializer
 )
-from .models import Program, Group, Friendship, Action, Comment, Notification
+from .models import Program, Group, Friendship, Action, Comment, Notification, Message
 
 
 # View to list all programs, accessible by anyone
@@ -226,6 +226,9 @@ class GroupRetrieveUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 # View to list and create friendships, accessible only by authenticated users
 class FriendshipListCreate(generics.ListCreateAPIView):
@@ -248,6 +251,20 @@ class FriendshipDelete(generics.DestroyAPIView):
 
     def get_object(self):
         return Friendship.objects.get(user=self.request.user, friend_id=self.kwargs['friend_id'])
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    queryset = Message.objects.all()
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Message.objects.filter(receiver=user) | Message.objects.filter(sender=user) | Message.objects.filter(
+            group_id__isnull=False)
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
 
 
 class FriendshipUpdate(generics.UpdateAPIView):

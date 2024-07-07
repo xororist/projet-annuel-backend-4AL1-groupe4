@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Program, Group, Friendship, Action, Comment, Notification
+from .models import Program, Group, Friendship, Action, Comment, Notification, Message
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -35,11 +35,19 @@ class ProgramSerializer(serializers.ModelSerializer):
 
 class GroupSerializer(serializers.ModelSerializer):
     author_id = serializers.PrimaryKeyRelatedField(source='author', read_only=True)
-    members = UserSerializer(many=True, read_only=True)
+    members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True)
+    id = serializers.ReadOnlyField()
 
     class Meta:
         model = Group
         fields = ["id", "name", "description", "created_at", "author_id", "members"]
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = '__all__'
+        read_only_fields = ['id']
 
 
 class FriendshipSerializer(serializers.ModelSerializer):

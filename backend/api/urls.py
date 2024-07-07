@@ -3,7 +3,7 @@ from . import views
 from .views import ExecuteCodeView, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
     AddFriendView, ListFriendsView, PipelineView, UploadAndExecuteView, UserDeleteView, UserListView, \
     NotificationViewSet, \
-    ListFriendsView, UserListView, NotificationViewSet, ManageFriendRequestView, FriendshipUpdate
+    ListFriendsView, UserListView, NotificationViewSet, ManageFriendRequestView, FriendshipUpdate, MessageViewSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import  ActionViewSet, CommentViewSet
@@ -12,6 +12,8 @@ router = DefaultRouter()
 router.register(r'actions', ActionViewSet, basename='action')
 router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'messages', MessageViewSet)
+
 
 urlpatterns = [
     path('', include(router.urls)),

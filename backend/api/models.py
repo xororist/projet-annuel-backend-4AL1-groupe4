@@ -3,10 +3,12 @@ from django.contrib.auth.models import User
 import os
 import uuid
 
+
 def get_unique_filename(instance, filename):
     ext = filename.split('.')[-1]
     new_filename = f"{uuid.uuid4()}.{ext}"
     return os.path.join('programs', new_filename)
+
 
 class Program(models.Model):
     title = models.CharField(max_length=100)
@@ -15,8 +17,9 @@ class Program(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="programs")
     file = models.FileField(upload_to=get_unique_filename, default='', blank=True)
     isVisible = models.BooleanField(default=True)
-    input_type = models.CharField(max_length=50, default='.txt')  
-    output_type = models.CharField(max_length=50, default='.txt') 
+    input_type = models.CharField(max_length=50, default='.txt')
+    output_type = models.CharField(max_length=50, default='.txt')
+
     def __str__(self) -> str:
         return self.title
 
@@ -25,11 +28,23 @@ class Group(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_groups")  # Changement ici
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_groups")
     members = models.ManyToManyField(User, related_name='group_memberships')
 
     def __str__(self):
         return self.name
+
+
+class Message(models.Model):
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages', null=True,
+                                 blank=True)
+    group_id = models.IntegerField(null=True, blank=True)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Message from {self.sender} to {self.receiver or "group " + str(self.group_id)}'
 
 
 class Friendship(models.Model):
@@ -92,8 +107,10 @@ class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_notifications")
     action_type = models.CharField(max_length=50)
-    program = models.ForeignKey('Program', on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
-    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
+    program = models.ForeignKey('Program', on_delete=models.CASCADE, related_name="notifications", null=True,
+                                blank=True)
+    comment = models.ForeignKey('Comment', on_delete=models.CASCADE, related_name="notifications", null=True,
+                                blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
 
