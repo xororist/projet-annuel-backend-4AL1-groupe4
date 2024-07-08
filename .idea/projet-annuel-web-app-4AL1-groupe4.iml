@@ -6,6 +6,9 @@
       <excludeFolder url="file://$MODULE_DIR$/temp" />
       <excludeFolder url="file://$MODULE_DIR$/tmp" />
       <excludeFolder url="file://$MODULE_DIR$/backend/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/include" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/lib" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
