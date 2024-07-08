@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - programs-data:/app/media/programs
+      - ./backend/media/programs:/app/media/programs
     depends_on:
       db:
         condition: service_healthy
