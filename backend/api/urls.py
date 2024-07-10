@@ -1,8 +1,9 @@
 from django.urls import path
 from . import views
 from .views import ExecuteCodeView, GroupListCreate, GroupRetrieveUpdateDelete, FriendshipListCreate, FriendshipDelete, \
-    AddFriendView, ListFriendsView, PipelineView, UploadAndExecuteView, UserDeleteView, UserListView, NotificationViewSet, \
-    ListFriendsView, UserListView, NotificationViewSet, ManageFriendRequestView
+    AddFriendView, ListFriendsView, PipelineView, UploadAndExecuteView, UserDeleteView, UserListView, \
+    NotificationViewSet, \
+    ListFriendsView, UserListView, NotificationViewSet, ManageFriendRequestView, FriendshipUpdate, MessageViewSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import  ActionViewSet, CommentViewSet
@@ -11,6 +12,8 @@ router = DefaultRouter()
 router.register(r'actions', ActionViewSet, basename='action')
 router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'messages', MessageViewSet)
+
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -27,6 +30,7 @@ urlpatterns = [
     path('groups/<int:pk>/', GroupRetrieveUpdateDelete.as_view(), name='group-retrieve-update-delete'),
     path('friendships/', FriendshipListCreate.as_view(), name='friendship-list-create'),
     path('friendships/<int:friend_id>/', FriendshipDelete.as_view(), name='friendship-delete'),
+    path('friendships/update/<int:friendship_id>/', FriendshipUpdate.as_view(), name='friendship-update'),
     path('add_friend/', AddFriendView.as_view(), name='add-friend'),
     path('friends/', ListFriendsView.as_view(), name='list-friends'),
     path('pipeline/', PipelineView.as_view(), name="pipeline-view"),  # Added PipelineView URL
