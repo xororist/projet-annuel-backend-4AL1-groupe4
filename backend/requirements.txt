@@ -11,3 +11,4 @@ python-dotenv
 django-rest-swagger
 Pillow
 boto3
+drf_yasg
