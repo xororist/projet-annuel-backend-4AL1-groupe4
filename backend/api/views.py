@@ -437,7 +437,7 @@ class PipelineView(APIView):
                 destination.write(content)
 
         current_input_path = input_file_path
-        intermediary_files = [current_input_path]
+        intermediary_files = []
 
         try:
             for program in programs:
@@ -494,9 +494,9 @@ class PipelineView(APIView):
                 intermediary_files.append(current_input_path)
 
             s3_bucket_name = 'scripts-output-pa-esgi'
-            s3_file_urls = [self.upload_file_to_s3(file_path, s3_bucket_name) for file_path in intermediary_files]
+            s3_file_urls = {f"step_{i+1}": self.upload_file_to_s3(file_path, s3_bucket_name) for i, file_path in enumerate(intermediary_files)}
 
-            return JsonResponse({"file_urls": s3_file_urls}, status=status.HTTP_200_OK)
+            return JsonResponse({"files_url": s3_file_urls}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
