@@ -16,13 +16,8 @@ from .serializers import (
 )
 from .models import Program, Group, Friendship, Action, Comment, Notification, Message
 
-def detect_file_type(file_path):
-    detector = magicka.Detector()
-    return detector.from_file(file_path)
+AWS_STORAGE_BUCKET_NAME = 'scripts-input-pa-esgi'
 
-def set_resource_limits():
-    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))  # CPU time limit (seconds)
-    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))  # Memory limit (bytes)
 
 # View to list all programs, accessible by anyone
 class ProgramList(generics.ListAPIView):
@@ -122,6 +117,15 @@ class UserDeleteView(generics.DestroyAPIView):
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def download_file_from_s3(self, bucket_name, object_name, file_path):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        s3_client.download_file(bucket_name, object_name, file_path)
+
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
             's3',
@@ -152,58 +156,54 @@ class ExecuteCodeView(APIView):
             for content in file.chunks():
                 destination.write(content)
 
-        # Detect file type
-        file_type = detect_file_type(uploaded_file_path)
-        if not file_type or not file_type.mime.startswith('text'):
-            return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)
+        # Upload file to S3
+        input_s3_path = self.upload_file_to_s3(uploaded_file_path, AWS_STORAGE_BUCKET_NAME)
 
         script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
         program_extension = os.path.splitext(program)[1].lower()
 
-        if not os.path.exists(script_path):
-            return Response({"error": "Program script file not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Download script from S3
+        script_s3_path = f"programs/{program}"
+        self.download_file_from_s3(AWS_STORAGE_BUCKET_NAME, script_s3_path, script_path)
 
         try:
-            process_args = {
-                'stdout': subprocess.PIPE,
-                'stderr': subprocess.PIPE,
-                'text': True,
-                'preexec_fn': set_resource_limits
-            }
-
             if program_extension == '.py':
                 process = subprocess.Popen(
                     ['python', script_path, uploaded_file_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             elif program_extension == '.go':
                 process = subprocess.Popen(
                     ['go', 'run', script_path, uploaded_file_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             elif program_extension == '.cpp':
                 executable_path = os.path.join(settings.MEDIA_ROOT, 'programs', 'a.out')
                 compile_process = subprocess.Popen(
                     ['g++', script_path, '-o', executable_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
-                compile_stdout, compile_stderr = compile_process.communicate(timeout=10)
+                compile_stdout, compile_stderr = compile_process.communicate()
 
                 if compile_process.returncode != 0:
                     return Response({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                 process = subprocess.Popen(
                     [executable_path, uploaded_file_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             else:
                 return Response({"error": "Unsupported file extension"}, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                stdout, stderr = process.communicate(timeout=10)  # Set timeout for the process
-            except subprocess.TimeoutExpired:
-                process.kill()
-                return Response({"error": "Execution timed out"}, status=status.HTTP_400_BAD_REQUEST)
+            stdout, stderr = process.communicate()
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
@@ -216,6 +216,7 @@ class ExecuteCodeView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # View to list all users, accessible only by authenticated users
 class UserListView(generics.ListAPIView):
@@ -417,6 +418,15 @@ class NotificationViewSet(viewsets.ModelViewSet):
 class PipelineView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def download_file_from_s3(self, bucket_name, object_name, file_path):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        s3_client.download_file(bucket_name, object_name, file_path)
+
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
             's3',
@@ -450,7 +460,9 @@ class PipelineView(APIView):
             for content in input_file.chunks():
                 destination.write(content)
 
-        current_input_path = input_file_path
+        # Upload input file to S3
+        current_input_s3_path = self.upload_file_to_s3(input_file_path, AWS_STORAGE_BUCKET_NAME)
+
         intermediary_files = []
 
         try:
@@ -458,20 +470,20 @@ class PipelineView(APIView):
                 script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
                 program_extension = os.path.splitext(program)[1].lower()
 
-                if not os.path.exists(script_path):
-                    return JsonResponse({"error": f"Program script file '{program}' not found"},
-                                        status=status.HTTP_404_NOT_FOUND)
+                # Download script from S3
+                script_s3_path = f"programs/{program}"
+                self.download_file_from_s3(AWS_STORAGE_BUCKET_NAME, script_s3_path, script_path)
 
                 if program_extension == '.py':
                     process = subprocess.Popen(
-                        ['python', script_path, current_input_path],
+                        ['python', script_path, input_file_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
                     )
                 elif program_extension == '.go':
                     process = subprocess.Popen(
-                        ['go', 'run', script_path, current_input_path],
+                        ['go', 'run', script_path, input_file_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
@@ -490,7 +502,7 @@ class PipelineView(APIView):
                         return JsonResponse({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                     process = subprocess.Popen(
-                        [executable_path, current_input_path],
+                        [executable_path, input_file_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
@@ -519,6 +531,15 @@ class PipelineView(APIView):
 class UploadAndExecuteView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
+
+    def download_file_from_s3(self, bucket_name, object_name, file_path):
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        s3_client.download_file(bucket_name, object_name, file_path)
 
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
@@ -558,57 +579,50 @@ class UploadAndExecuteView(APIView):
             for chunk in input_file.chunks():
                 input_dest.write(chunk)
 
-        # Detect file type
-        script_file_type = detect_file_type(script_path)
-        input_file_type = detect_file_type(input_path)
-        if not script_file_type or not script_file_type.mime.startswith('text'):
-            return Response({"error": "Unsupported script file type"}, status=status.HTTP_400_BAD_REQUEST)
-        if not input_file_type or not input_file_type.mime.startswith('text'):
-            return Response({"error": "Unsupported input file type"}, status=status.HTTP_400_BAD_REQUEST)
+        # Upload script and input files to S3
+        script_s3_path = self.upload_file_to_s3(script_path, AWS_STORAGE_BUCKET_NAME)
+        input_s3_path = self.upload_file_to_s3(input_path, AWS_STORAGE_BUCKET_NAME)
 
         script_extension = os.path.splitext(script_file.name)[1].lower()
 
         try:
-            process_args = {
-                'stdout': subprocess.PIPE,
-                'stderr': subprocess.PIPE,
-                'text': True,
-                'preexec_fn': set_resource_limits
-            }
-
             if script_extension == '.py':
                 process = subprocess.Popen(
                     ['python', script_path, input_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             elif script_extension == '.go':
                 process = subprocess.Popen(
                     ['go', 'run', script_path, input_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             elif script_extension == '.cpp':
                 executable_path = os.path.join(settings.MEDIA_ROOT, 'scripts', 'a.out')
                 compile_process = subprocess.Popen(
                     ['g++', script_path, '-o', executable_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
-                compile_stdout, compile_stderr = compile_process.communicate(timeout=10)
+                compile_stdout, compile_stderr = compile_process.communicate()
 
                 if compile_process.returncode != 0:
                     return Response({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                 process = subprocess.Popen(
                     [executable_path, input_path],
-                    **process_args
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
             else:
                 return Response({"error": "Unsupported script file extension"}, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                stdout, stderr = process.communicate(timeout=10)  # Set timeout for the process
-            except subprocess.TimeoutExpired:
-                process.kill()
-                return Response({"error": "Execution timed out"}, status=status.HTTP_400_BAD_REQUEST)
+            stdout, stderr = process.communicate()
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
