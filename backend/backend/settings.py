@@ -15,13 +15,14 @@ SECRET_KEY = 'django-insecure-zwva$h6w(g%u_j%9_fp5t#85keff6*9fc7g$u+q&nw5@(!&exx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*",
-                 "localhost"
-                 "localhost:3000",
-                 "ec2-13-53-40-36.eu-north-1.compute.amazonaws.com",
-                 "http://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"
-                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
-                 ]
+ALLOWED_HOSTS = [
+    "*",
+    "localhost",
+    "localhost:3000",
+    "ec2-13-53-40-36.eu-north-1.compute.amazonaws.com",
+    "http://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
+    "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -36,8 +37,6 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
-
-
 
 INSTALLED_APPS = [
     'api',
@@ -88,7 +87,6 @@ DATABASES = {
     'default': dj_database_url.parse('postgresql://pguser:kjRa4kxaYcACQwlnfMmlvfsDPkTOrSd1@dpg-cqglmaeehbks738vl4eg-a.frankfurt-postgres.render.com/devdatabase_n2lj')
 }
 
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -120,9 +118,11 @@ CORS_ALLOW_CREDENTIALS = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
 AWS_ACCESS_KEY_ID = 'AKIA47CRYH3NUZGAJQUW'
 AWS_SECRET_ACCESS_KEY = 'e9lLRacQTSdFmVjfYDxqPEAFDmgNDG5QEapMf4ed'
 AWS_STORAGE_BUCKET_NAME = 'scripts-input-pa-esgi'
 AWS_S3_REGION_NAME = 'eu-north-1'  # e.g., 'us-west-1'
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-
