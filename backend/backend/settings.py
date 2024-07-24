@@ -15,8 +15,10 @@ SECRET_KEY = 'django-insecure-zwva$h6w(g%u_j%9_fp5t#85keff6*9fc7g$u+q&nw5@(!&exx
 DEBUG = True
 
 ALLOWED_HOSTS = ["*",
-                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/",
-                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"]
+                    "ec2-13-53-40-36.eu-north-1.compute.amazonaws.com"
+                    "http://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"
+                    "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
+                 ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -31,6 +33,14 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 INSTALLED_APPS = [
     'api',
