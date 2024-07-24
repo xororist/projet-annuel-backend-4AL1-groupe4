@@ -13,3 +13,6 @@ Pillow
 boto3
 drf_yasg
 magicka
+python-docx
+docx
+fpdf
