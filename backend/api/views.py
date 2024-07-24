@@ -16,8 +16,6 @@ from .serializers import (
 )
 from .models import Program, Group, Friendship, Action, Comment, Notification, Message
 
-AWS_STORAGE_BUCKET_NAME = 'scripts-input-pa-esgi'
-
 
 # View to list all programs, accessible by anyone
 class ProgramList(generics.ListAPIView):
@@ -114,27 +112,8 @@ class UserDeleteView(generics.DestroyAPIView):
 
 
 # View to execute code and upload the output to S3, accessible only by authenticated users
-import logging
-from botocore.exceptions import ClientError
-
-logger = logging.getLogger(__name__)
-
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def download_file_from_s3(self, bucket_name, object_name, file_path):
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        try:
-            s3_client.head_object(Bucket=bucket_name, Key=object_name)
-            s3_client.download_file(bucket_name, object_name, file_path)
-        except ClientError as e:
-            logger.error(f"Failed to download file from S3: {e}")
-            raise e
 
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
@@ -150,8 +129,7 @@ class ExecuteCodeView(APIView):
             s3_client.upload_file(file_path, bucket_name, object_name)
             return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
         except Exception as e:
-            logger.error(f"Failed to upload file to S3: {str(e)}")
-            raise e
+            raise Exception(f"Failed to upload file to S3: {str(e)}")
 
     def post(self, request, *args, **kwargs):
         program = request.data.get('program')
@@ -161,24 +139,17 @@ class ExecuteCodeView(APIView):
             return Response({"error": "Program file name and uploaded file are required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        uploaded_file_path = os.path.join(settings.MEDIA_ROOT, file.name)
+        uploaded_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', file.name)
 
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
                 destination.write(content)
 
-        # Download script from S3
-        script_path = os.path.join(settings.MEDIA_ROOT, program)
-        script_s3_path = program
-
-        logger.info(f"Attempting to download script from S3: {script_s3_path}")
-
-        try:
-            self.download_file_from_s3(AWS_STORAGE_BUCKET_NAME, script_s3_path, script_path)
-        except ClientError:
-            return Response({"error": "Program script file not found in S3"}, status=status.HTTP_404_NOT_FOUND)
-
+        script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
         program_extension = os.path.splitext(program)[1].lower()
+
+        if not os.path.exists(script_path):
+            return Response({"error": "Program script file not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             if program_extension == '.py':
@@ -196,7 +167,7 @@ class ExecuteCodeView(APIView):
                     text=True
                 )
             elif program_extension == '.cpp':
-                executable_path = os.path.join(settings.MEDIA_ROOT, 'a.out')
+                executable_path = os.path.join(settings.MEDIA_ROOT, 'programs', 'a.out')
                 compile_process = subprocess.Popen(
                     ['g++', script_path, '-o', executable_path],
                     stdout=subprocess.PIPE,
@@ -229,7 +200,6 @@ class ExecuteCodeView(APIView):
             return Response({"file_url": s3_file_url}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.error(f"Execution failed: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -433,15 +403,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
 class PipelineView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def download_file_from_s3(self, bucket_name, object_name, file_path):
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        s3_client.download_file(bucket_name, object_name, file_path)
-
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
             's3',
@@ -475,9 +436,7 @@ class PipelineView(APIView):
             for content in input_file.chunks():
                 destination.write(content)
 
-        # Upload input file to S3
-        current_input_s3_path = self.upload_file_to_s3(input_file_path, AWS_STORAGE_BUCKET_NAME)
-
+        current_input_path = input_file_path
         intermediary_files = []
 
         try:
@@ -485,20 +444,20 @@ class PipelineView(APIView):
                 script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
                 program_extension = os.path.splitext(program)[1].lower()
 
-                # Download script from S3
-                script_s3_path = f"programs/{program}"
-                self.download_file_from_s3(AWS_STORAGE_BUCKET_NAME, script_s3_path, script_path)
+                if not os.path.exists(script_path):
+                    return JsonResponse({"error": f"Program script file '{program}' not found"},
+                                        status=status.HTTP_404_NOT_FOUND)
 
                 if program_extension == '.py':
                     process = subprocess.Popen(
-                        ['python', script_path, input_file_path],
+                        ['python', script_path, current_input_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
                     )
                 elif program_extension == '.go':
                     process = subprocess.Popen(
-                        ['go', 'run', script_path, input_file_path],
+                        ['go', 'run', script_path, current_input_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
@@ -517,7 +476,7 @@ class PipelineView(APIView):
                         return JsonResponse({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                     process = subprocess.Popen(
-                        [executable_path, input_file_path],
+                        [executable_path, current_input_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         text=True
@@ -546,15 +505,6 @@ class PipelineView(APIView):
 class UploadAndExecuteView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
-
-    def download_file_from_s3(self, bucket_name, object_name, file_path):
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        s3_client.download_file(bucket_name, object_name, file_path)
 
     def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
         s3_client = boto3.client(
@@ -593,10 +543,6 @@ class UploadAndExecuteView(APIView):
         with open(input_path, 'wb+') as input_dest:
             for chunk in input_file.chunks():
                 input_dest.write(chunk)
-
-        # Upload script and input files to S3
-        script_s3_path = self.upload_file_to_s3(script_path, AWS_STORAGE_BUCKET_NAME)
-        input_s3_path = self.upload_file_to_s3(input_path, AWS_STORAGE_BUCKET_NAME)
 
         script_extension = os.path.splitext(script_file.name)[1].lower()
 
