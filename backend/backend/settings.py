@@ -15,9 +15,11 @@ SECRET_KEY = 'django-insecure-zwva$h6w(g%u_j%9_fp5t#85keff6*9fc7g$u+q&nw5@(!&exx
 DEBUG = True
 
 ALLOWED_HOSTS = ["*",
-                    "ec2-13-53-40-36.eu-north-1.compute.amazonaws.com"
-                    "http://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"
-                    "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
+                 "localhost"
+                 "localhost:3000",
+                 "ec2-13-53-40-36.eu-north-1.compute.amazonaws.com",
+                 "http://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"
+                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*",
                  ]
 
 REST_FRAMEWORK = {
