@@ -14,7 +14,9 @@ SECRET_KEY = 'django-insecure-zwva$h6w(g%u_j%9_fp5t#85keff6*9fc7g$u+q&nw5@(!&exx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*",
+                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/",
+                 "https://projet-annuel-web-app-front-4al1-groupe4.onrender.com/*"]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
