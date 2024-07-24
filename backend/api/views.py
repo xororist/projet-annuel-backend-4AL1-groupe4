@@ -115,30 +115,6 @@ class UserDeleteView(generics.DestroyAPIView):
 class ExecuteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def upload_file_to_s3(self, file_path, bucket_name, object_name=None):
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-
-        object_name = object_name or os.path.basename(file_path)
-
-        try:
-            s3_client.upload_file(file_path, bucket_name, object_name)
-            logger.info(f"File {file_path} uploaded to S3 bucket {bucket_name} as {object_name}")
-            return f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
-        except s3_client.exceptions.NoSuchBucket:
-            logger.error(f"S3 bucket {bucket_name} does not exist.")
-            raise Exception(f"S3 bucket {bucket_name} does not exist.")
-        except s3_client.exceptions.NoSuchKey:
-            logger.error(f"S3 object {object_name} not found in bucket {bucket_name}.")
-            raise Exception(f"S3 object {object_name} not found in bucket {bucket_name}.")
-        except Exception as e:
-            logger.error(f"Failed to upload file to S3: {str(e)}")
-            raise Exception(f"Failed to upload file to S3: {str(e)}")
-
     def post(self, request, *args, **kwargs):
         program = request.data.get('program')
         file = request.FILES.get('file')
@@ -148,6 +124,8 @@ class ExecuteCodeView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         uploaded_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', file.name)
+
+        os.makedirs(os.path.dirname(uploaded_file_path), exist_ok=True)
 
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
@@ -201,15 +179,13 @@ class ExecuteCodeView(APIView):
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
 
-            file_path = stdout.strip().split(": ")[-1]
-            s3_bucket_name = 'scripts-output-pa-esgi'
-            s3_file_url = self.upload_file_to_s3(file_path, s3_bucket_name)
+            output_file_path = stdout.strip().split(": ")[-1]
 
-            return Response({"file_url": s3_file_url}, status=status.HTTP_200_OK)
+            return Response({"file_url": output_file_path}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.error(f"Error executing script: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # View to list all users, accessible only by authenticated users
 class UserListView(generics.ListAPIView):
