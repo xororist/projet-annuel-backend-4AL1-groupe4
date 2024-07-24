@@ -141,8 +141,6 @@ class ExecuteCodeView(APIView):
 
         uploaded_file_path = os.path.join(settings.MEDIA_ROOT, 'programs', file.name)
 
-        os.makedirs(os.path.dirname(uploaded_file_path), exist_ok=True)
-
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
                 destination.write(content)
@@ -195,19 +193,14 @@ class ExecuteCodeView(APIView):
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
 
-            output_file_path = stdout.strip().split(": ")[-1]
-            if not os.path.exists(output_file_path):
-                return Response({"error": "Output file not found"}, status=status.HTTP_404_NOT_FOUND)
-
+            file_path = stdout.strip().split(": ")[-1]
             s3_bucket_name = 'scripts-output-pa-esgi'
-            s3_file_url = self.upload_file_to_s3(output_file_path, s3_bucket_name)
+            s3_file_url = self.upload_file_to_s3(file_path, s3_bucket_name)
 
             return Response({"file_url": s3_file_url}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.error(f"Error executing script: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 # View to list all users, accessible only by authenticated users
 class UserListView(generics.ListAPIView):
