@@ -20,6 +20,9 @@ def detect_file_type(file_path):
     detector = magicka.Detector()
     return detector.from_file(file_path)
 
+def set_resource_limits():
+    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))  # CPU time limit (seconds)
+    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))  # Memory limit (bytes)
 
 # View to list all programs, accessible by anyone
 class ProgramList(generics.ListAPIView):
@@ -161,43 +164,46 @@ class ExecuteCodeView(APIView):
             return Response({"error": "Program script file not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
+            process_args = {
+                'stdout': subprocess.PIPE,
+                'stderr': subprocess.PIPE,
+                'text': True,
+                'preexec_fn': set_resource_limits
+            }
+
             if program_extension == '.py':
                 process = subprocess.Popen(
                     ['python', script_path, uploaded_file_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             elif program_extension == '.go':
                 process = subprocess.Popen(
                     ['go', 'run', script_path, uploaded_file_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             elif program_extension == '.cpp':
                 executable_path = os.path.join(settings.MEDIA_ROOT, 'programs', 'a.out')
                 compile_process = subprocess.Popen(
                     ['g++', script_path, '-o', executable_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
-                compile_stdout, compile_stderr = compile_process.communicate()
+                compile_stdout, compile_stderr = compile_process.communicate(timeout=10)
 
                 if compile_process.returncode != 0:
                     return Response({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                 process = subprocess.Popen(
                     [executable_path, uploaded_file_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             else:
                 return Response({"error": "Unsupported file extension"}, status=status.HTTP_400_BAD_REQUEST)
 
-            stdout, stderr = process.communicate()
+            try:
+                stdout, stderr = process.communicate(timeout=10)  # Set timeout for the process
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return Response({"error": "Execution timed out"}, status=status.HTTP_400_BAD_REQUEST)
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
@@ -210,7 +216,6 @@ class ExecuteCodeView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 # View to list all users, accessible only by authenticated users
 class UserListView(generics.ListAPIView):
@@ -564,43 +569,46 @@ class UploadAndExecuteView(APIView):
         script_extension = os.path.splitext(script_file.name)[1].lower()
 
         try:
+            process_args = {
+                'stdout': subprocess.PIPE,
+                'stderr': subprocess.PIPE,
+                'text': True,
+                'preexec_fn': set_resource_limits
+            }
+
             if script_extension == '.py':
                 process = subprocess.Popen(
                     ['python', script_path, input_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             elif script_extension == '.go':
                 process = subprocess.Popen(
                     ['go', 'run', script_path, input_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             elif script_extension == '.cpp':
                 executable_path = os.path.join(settings.MEDIA_ROOT, 'scripts', 'a.out')
                 compile_process = subprocess.Popen(
                     ['g++', script_path, '-o', executable_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
-                compile_stdout, compile_stderr = compile_process.communicate()
+                compile_stdout, compile_stderr = compile_process.communicate(timeout=10)
 
                 if compile_process.returncode != 0:
                     return Response({"error": compile_stderr}, status=status.HTTP_400_BAD_REQUEST)
 
                 process = subprocess.Popen(
                     [executable_path, input_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    **process_args
                 )
             else:
                 return Response({"error": "Unsupported script file extension"}, status=status.HTTP_400_BAD_REQUEST)
 
-            stdout, stderr = process.communicate()
+            try:
+                stdout, stderr = process.communicate(timeout=10)  # Set timeout for the process
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return Response({"error": "Execution timed out"}, status=status.HTTP_400_BAD_REQUEST)
 
             if process.returncode != 0:
                 return Response({"error": stderr}, status=status.HTTP_400_BAD_REQUEST)
