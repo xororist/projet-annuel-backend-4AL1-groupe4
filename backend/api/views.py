@@ -16,6 +16,10 @@ from .serializers import (
 )
 from .models import Program, Group, Friendship, Action, Comment, Notification, Message
 
+def detect_file_type(file_path):
+    detector = magicka.Detector()
+    return detector.from_file(file_path)
+
 
 # View to list all programs, accessible by anyone
 class ProgramList(generics.ListAPIView):
@@ -144,6 +148,11 @@ class ExecuteCodeView(APIView):
         with open(uploaded_file_path, 'wb+') as destination:
             for content in file.chunks():
                 destination.write(content)
+
+        # Detect file type
+        file_type = detect_file_type(uploaded_file_path)
+        if not file_type or not file_type.mime.startswith('text'):
+            return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)
 
         script_path = os.path.join(settings.MEDIA_ROOT, 'programs', program)
         program_extension = os.path.splitext(program)[1].lower()
@@ -543,6 +552,14 @@ class UploadAndExecuteView(APIView):
         with open(input_path, 'wb+') as input_dest:
             for chunk in input_file.chunks():
                 input_dest.write(chunk)
+
+        # Detect file type
+        script_file_type = detect_file_type(script_path)
+        input_file_type = detect_file_type(input_path)
+        if not script_file_type or not script_file_type.mime.startswith('text'):
+            return Response({"error": "Unsupported script file type"}, status=status.HTTP_400_BAD_REQUEST)
+        if not input_file_type or not input_file_type.mime.startswith('text'):
+            return Response({"error": "Unsupported input file type"}, status=status.HTTP_400_BAD_REQUEST)
 
         script_extension = os.path.splitext(script_file.name)[1].lower()
 
